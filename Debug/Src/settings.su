@@ -1,0 +1,4 @@
+settings.c:26:6:BufferParams	8	static
+settings.c:30:6:UnbufferParams	32	static
+settings.c:47:6:StartChangeFlashParam	8	static
+settings.c:54:6:EndChangeFlashParam	16	static

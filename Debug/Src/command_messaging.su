@@ -1,0 +1,3 @@
+command_messaging.c:18:9:FindCommand	24	static
+command_messaging.c:28:23:ProcessCommand	48	static
+command_messaging.c:70:23:AddCommand	32	static

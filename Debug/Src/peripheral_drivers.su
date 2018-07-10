@@ -1,0 +1,9 @@
+peripheral_drivers.c:54:6:InitializeDriversWorker	8	static
+peripheral_drivers.c:65:9:InitializeBESCDriver	32	static
+peripheral_drivers.c:84:9:InitializeLEDDriver	24	static
+peripheral_drivers.c:102:9:InitializeBCSDriver	88	static
+peripheral_drivers.c:153:9:BESCDriverChangeSpeed	48	static
+peripheral_drivers.c:168:9:LEDDriverChangeBrightness	40	static
+peripheral_drivers.c:181:9:BCSDriverChangeSpeed	48	static
+peripheral_drivers.c:198:9:BCSDriverMove	24	static
+peripheral_drivers.c:219:9:BCSDriverMoveToEnd	24	static

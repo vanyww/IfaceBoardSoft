@@ -1,0 +1,7 @@
+MS5837-30BADriver.c:64:17:CRC4	24	static
+MS5837-30BADriver.c:81:29:MS5837ReadEEPROMCoeffs	32	static
+MS5837-30BADriver.c:102:22:MS5837Init	8	static
+MS5837-30BADriver.c:112:22:MS5837IsConnected	8	static
+MS5837-30BADriver.c:116:22:MS5837Reset	24	static
+MS5837-30BADriver.c:126:22:MS5837ReadTemperature	104	static
+MS5837-30BADriver.c:160:22:MS5837ReadTemperatureAndPressure	360	static
