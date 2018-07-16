@@ -130,7 +130,7 @@ uint8_t C_W_BESCChangeSpeed(struct ModbusRecvMessage *msg) {
 		return ANY_ERROR;
 
 	if (BESCDriverChangeSpeed(&BESCDrivers[bescDriverId],
-			&(msg->Data[sizeof(uint8_t)])))
+			&msg->Data[sizeof(uint8_t)]))
 		return ANY_ERROR;
 
 	return ALL_OK;
@@ -148,7 +148,7 @@ uint8_t C_W_LEDChangeBrightness(struct ModbusRecvMessage *msg) {
 		return ANY_ERROR;
 
 	if (LEDDriverChangeBrightness(&LEDDrivers[ledDriverId],
-			&(msg->Data[sizeof(uint8_t)])))
+			&msg->Data[sizeof(uint8_t)]))
 		return ANY_ERROR;
 
 	return ALL_OK;
@@ -166,7 +166,7 @@ uint8_t C_W_BCS_ChangeSpeed(struct ModbusRecvMessage *msg) {
 		return ANY_ERROR;
 
 	if (BCSDriverChangeSpeed(&BCSDrivers[bcsDriverId],
-			&(msg->Data[sizeof(uint8_t)])))
+			&msg->Data[sizeof(uint8_t)]))
 		return ANY_ERROR;
 
 	return ALL_OK;
@@ -183,7 +183,24 @@ uint8_t C_W_BCS_Move(struct ModbusRecvMessage *msg) {
 	if (bcsDriverId >= BCSDriversCounter)
 		return ANY_ERROR;
 
-	if (BCSDriverMove(&BCSDrivers[bcsDriverId], &(msg->Data[sizeof(uint8_t)])))
+	if (BCSDriverMove(&BCSDrivers[bcsDriverId], &msg->Data[sizeof(uint8_t)]))
+		return ANY_ERROR;
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_BCS_Stop(struct ModbusRecvMessage *msg) {
+	if (msg->DataLength != sizeof(uint8_t))
+		return ANY_ERROR;
+
+	uint8_t bcsDriverId = msg->Data[0];
+
+	if (bcsDriverId >= BCSDriversCounter)
+		return ANY_ERROR;
+
+	if (BCSDriverStop(&BCSDrivers[bcsDriverId]))
 		return ANY_ERROR;
 
 	return ALL_OK;
@@ -201,7 +218,7 @@ uint8_t C_W_BCS_MoveToEnd(struct ModbusRecvMessage *msg) {
 		return ANY_ERROR;
 
 	if (BCSDriverMoveToEnd(&BCSDrivers[bcsDriverId],
-			&(msg->Data[sizeof(uint8_t)])))
+			&msg->Data[sizeof(uint8_t)]))
 		return ANY_ERROR;
 
 	return ALL_OK;
@@ -275,6 +292,7 @@ void InitializeCommands() {
 	AddCommand(0x31, NULL, &C_W_BCS_ChangeSpeed);
 	AddCommand(0x32, NULL, &C_W_BCS_Move);
 	AddCommand(0x33, NULL, &C_W_BCS_MoveToEnd);
+	AddCommand(0x34, NULL, &C_W_BCS_Stop);
 
 	AddCommand(0x40, &C_R_MS5837_CheckConnection, NULL);
 	AddCommand(0x41, &C_R_MS5837_ReadTemp, NULL);

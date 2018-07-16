@@ -7,8 +7,9 @@ commands.c:123:9:C_W_BESCChangeSpeed	24	static
 commands.c:141:9:C_W_LEDChangeBrightness	24	static
 commands.c:159:9:C_W_BCS_ChangeSpeed	24	static
 commands.c:177:9:C_W_BCS_Move	24	static
-commands.c:194:9:C_W_BCS_MoveToEnd	24	static
-commands.c:212:9:C_R_MS5837_CheckConnection	24	static
-commands.c:220:9:C_R_MS5837_ReadTemp	32	static
-commands.c:237:9:C_R_MS5837_ReadTempAndPress	48	static
-commands.c:260:6:InitializeCommands	8	static
+commands.c:194:9:C_W_BCS_Stop	24	static
+commands.c:211:9:C_W_BCS_MoveToEnd	24	static
+commands.c:229:9:C_R_MS5837_CheckConnection	24	static
+commands.c:237:9:C_R_MS5837_ReadTemp	32	static
+commands.c:254:9:C_R_MS5837_ReadTempAndPress	48	static
+commands.c:277:6:InitializeCommands	8	static

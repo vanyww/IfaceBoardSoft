@@ -8,6 +8,8 @@
 #include "math.h"
 #include "peripheral_drivers.h"
 #include "string.h"
+#include "stdlib.h"
+#include "limits.h"
 
 #define TIM_PWM_PSC (10 - 1)
 
@@ -27,10 +29,6 @@
 #define BCS_TIM_CH_INEDX_2 1
 #define BCS_MAX_FREQUENCY 11970
 #define BCS_MIN_FREQUECNY 1000
-
-enum Direction {
-	FORWARD = 0, BACKWARD = 1
-};
 
 const uint8_t TIMChannelHandlesNumber = 4;
 
@@ -127,7 +125,11 @@ uint8_t InitializeBCSDriver(enum TIMChannel pwmTIMCh,
 	GPIOInitStruct.Mode = GPIO_MODE_IT_FALLING;
 	GPIOInitStruct.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(terminal->GPIO, &GPIOInitStruct);
+	__HAL_GPIO_EXTI_CLEAR_IT(terminal->Pin);
 	HAL_NVIC_SetPriority(terminal->EXTIId, 0, 0);
+	HAL_NVIC_EnableIRQ(terminal->EXTIId);
+
+	__HAL_TIM_SET_COUNTER(timCh->ComplementTIM, 0);
 
 	TIM_SlaveConfigTypeDef sSlaveConfig;
 	sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
@@ -173,7 +175,7 @@ uint8_t LEDDriverChangeBrightness(struct LEDDriverHandle *handle, uint8_t *data)
 		return ANY_ERROR;
 
 	__HAL_TIM_SET_COMPARE(handle->PWMTIM->Tim, handle->PWMTIM->Channel,
-			round(m_LEDDriverARR * (1 - newBrightness)));
+			round(m_LEDDriverARR * newBrightness));
 
 	return ALL_OK;
 }
@@ -199,19 +201,55 @@ uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data) {
 	enum Direction direction = (enum Direction) data[0];
 	uint16_t steps;
 	memcpy(&steps, data + 1, sizeof(int16_t));
+	steps = steps * 2 - 1;
 
-	if (direction != 0 && direction != 1)
-		return ANY_ERROR;
+	if (!(direction == FORWARD || direction == BACKWARD)) return ANY_ERROR;
+	if(steps > USHRT_MAX / 2) return ANY_ERROR;
 
-	HAL_GPIO_WritePin(handle->DirectionGPIO->GPIO, handle->DirectionGPIO->Pin,
-			(direction) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	uint16_t doneSteps = __HAL_TIM_GET_COUNTER(handle->PWMTIM->ComplementTIM);
+	int32_t leftSteps = __HAL_TIM_GET_AUTORELOAD(handle->PWMTIM->ComplementTIM) - doneSteps;
 
-	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, steps * 2 - 1);
+	if(doneSteps != 0) {
+		if(handle->CurrentDirection == direction){
+			if(leftSteps > USHRT_MAX - steps)
+				return ANY_ERROR;
 
+			steps += leftSteps;
+		}
+		else {
+			leftSteps -= steps;
+			if(leftSteps < 0) {
+				HAL_GPIO_WritePin(handle->DirectionGPIO->GPIO, handle->DirectionGPIO->Pin,
+						(direction) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+				handle->CurrentDirection = direction;
+			}
+
+			steps = (uint16_t)abs(leftSteps);
+		}
+
+		__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, steps);
+		__HAL_TIM_SET_COUNTER(handle->PWMTIM->ComplementTIM, 0);
+		return ALL_OK;
+	}
+
+	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, steps);
 	HAL_GPIO_WritePin(handle->DisableGPIO->GPIO, handle->DisableGPIO->Pin,
 			GPIO_PIN_SET);
+	HAL_GPIO_WritePin(handle->DirectionGPIO->GPIO, handle->DirectionGPIO->Pin,
+							(direction) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 	__HAL_TIM_ENABLE(handle->PWMTIM->ComplementTIM);
+	handle->CurrentDirection = direction;
+
+	return ALL_OK;
+}
+
+uint8_t BCSDriverStop(struct BCSDriverHandle *handle) {
+
+	__HAL_TIM_DISABLE(handle->PWMTIM->ComplementTIM);
+	HAL_GPIO_WritePin(handle->DisableGPIO->GPIO, handle->DisableGPIO->Pin,
+			GPIO_PIN_RESET);
+	__HAL_TIM_SET_COUNTER(handle->PWMTIM->ComplementTIM, 0);
 
 	return ALL_OK;
 }
@@ -219,11 +257,9 @@ uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data) {
 uint8_t BCSDriverMoveToEnd(struct BCSDriverHandle *handle, uint8_t *data) {
 	enum Direction direction = (enum Direction) data[0];
 
-	if (direction != 0 && direction != 1)
+	if (!(direction == FORWARD || direction == BACKWARD))
 		return ANY_ERROR;
 
-	__HAL_GPIO_EXTI_CLEAR_IT(handle->TerminalGPIO->Pin);
-	HAL_NVIC_EnableIRQ(handle->TerminalGPIO->EXTIId);
 	HAL_GPIO_WritePin(handle->DirectionGPIO->GPIO, handle->DirectionGPIO->Pin,
 			(direction) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 

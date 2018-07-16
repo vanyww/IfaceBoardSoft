@@ -31,8 +31,8 @@ enum ModbusErrorCode {
 };
 
 enum FunctionCode {
-	READ = 0x03,
-	WRITE = 0x06
+	READ = 0x46,
+	WRITE = 0x47
 };
 
 union CommandUnion {

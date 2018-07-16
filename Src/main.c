@@ -125,13 +125,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 		HAL_GPIO_WritePin(TIM1BCS->DisableGPIO->GPIO, TIM1BCS->DisableGPIO->Pin,
 				GPIO_PIN_RESET);
 		__HAL_TIM_SET_COUNTER(TIM1BCS->PWMTIM->ComplementTIM, 0);
-		HAL_NVIC_DisableIRQ(TIM1BCS->TerminalGPIO->EXTIId);
 	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if (htim->Instance == TIM14) {
-		__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
+		//__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
 		return;
 	}
 
@@ -217,7 +216,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM14_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_TIM16_Init();
 
   /* Initialize interrupts */
@@ -346,6 +345,9 @@ static void MX_NVIC_Init(void)
   /* TIM16_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM16_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(TIM16_IRQn);
+  /* TIM1_BRK_UP_TRG_COM_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM1_BRK_UP_TRG_COM_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn);
 }
 
 /* USER CODE BEGIN 4 */

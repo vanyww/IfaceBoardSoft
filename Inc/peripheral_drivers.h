@@ -25,6 +25,10 @@ enum GPIOChannel {
 	GPIOCh1 = 0, GPIOCh2 = 1, GPIOCh3 = 2, GPIOCh4 = 3, GPIOCh5 = 4, GPIOCh6 = 5
 };
 
+enum Direction {
+	FORWARD = 0, BACKWARD = 1
+};
+
 struct TIMChannelHandle {
 	TIM_HandleTypeDef *Tim;
 	uint32_t Channel;
@@ -52,6 +56,7 @@ struct BCSDriverHandle {
 	struct GPIOChannelHandle *DirectionGPIO;
 	struct GPIOChannelHandle *DisableGPIO;
 	struct GPIOChannelHandle *TerminalGPIO;
+	enum Direction CurrentDirection;
 };
 
 void InitializeDriversWorker();
@@ -71,5 +76,6 @@ uint8_t LEDDriverChangeBrightness(struct LEDDriverHandle *handle, uint8_t *data)
 uint8_t BCSDriverChangeSpeed(struct BCSDriverHandle *handle, uint8_t *data);
 uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data);
 uint8_t BCSDriverMoveToEnd(struct BCSDriverHandle *handle, uint8_t *data);
+uint8_t BCSDriverStop(struct BCSDriverHandle *handle);
 
 #endif /* PERIPHERAL_DRIVERS_H_ */

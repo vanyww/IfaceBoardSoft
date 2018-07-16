@@ -41,7 +41,7 @@
 static const uint16_t m_defaultSlaveId = 1;
 uint16_t SlaveId;
 
-static const uint8_t m_funcEnumValues[] = { 0x03, 0x06 };
+static const uint8_t m_funcEnumValues[] = { READ, WRITE };
 
 static uint8_t IsFunctionCode(uint8_t value);
 
