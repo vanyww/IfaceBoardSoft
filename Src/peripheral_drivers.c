@@ -60,6 +60,63 @@ void InitializeDriversWorker() {
 			/ ((TIM_PWM_PSC + 1) * BCS_MIN_FREQUECNY) - 1;
 }
 
+uint8_t ReinitializeBESCDriver(struct BESCDriverHandle *handle) {
+	struct TIMChannelHandle *tim = handle->PWMTIM;
+
+	__HAL_TIM_SET_COMPARE(tim->Tim, tim->Channel,
+			m_BESCDriverARR * (1 - STOPPED_DC));
+	__HAL_TIM_SET_PRESCALER(tim->Tim, TIM_PWM_PSC);
+	__HAL_TIM_SET_AUTORELOAD(tim->Tim, m_BESCDriverARR);
+
+	return ALL_OK;
+}
+
+uint8_t ReinitializeBCSDriver(struct BCSDriverHandle *handle) {
+	struct TIMChannelHandle *timCh = handle->PWMTIM;
+	struct GPIOChannelHandle *direction = handle->DirectionGPIO;
+	struct GPIOChannelHandle *disable = handle->DisableGPIO;
+	struct GPIOChannelHandle *terminal = handle->TerminalGPIO;
+
+	__HAL_TIM_SET_COMPARE(timCh->Tim, timCh->Channel, m_BCSDriverMaxARR / 2);
+	__HAL_TIM_SET_AUTORELOAD(timCh->Tim, m_BCSDriverMaxARR);
+	__HAL_TIM_SET_PRESCALER(timCh->Tim, TIM_PWM_PSC);
+
+	GPIO_InitTypeDef GPIOInitStruct = { .Pin = direction->Pin, .Mode =
+			GPIO_MODE_OUTPUT_PP, .Pull = GPIO_NOPULL, .Speed =
+					GPIO_SPEED_FREQ_LOW };
+	HAL_GPIO_Init(direction->GPIO, &GPIOInitStruct);
+
+	GPIOInitStruct.Pin = disable->Pin;
+	HAL_GPIO_Init(disable->GPIO, &GPIOInitStruct);
+
+	GPIOInitStruct.Pin = terminal->Pin;
+	GPIOInitStruct.Mode = GPIO_MODE_IT_FALLING;
+	GPIOInitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(terminal->GPIO, &GPIOInitStruct);
+	__HAL_GPIO_EXTI_CLEAR_IT(terminal->Pin);
+	HAL_NVIC_SetPriority(terminal->EXTIId, 0, 0);
+	HAL_NVIC_EnableIRQ(terminal->EXTIId);
+
+	__HAL_TIM_SET_COUNTER(timCh->ComplementTIM, 0);
+
+	TIM_SlaveConfigTypeDef sSlaveConfig;
+	sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
+	sSlaveConfig.InputTrigger = TIM_TS_ITR0;
+	HAL_TIM_SlaveConfigSynchronization(timCh->Tim, &sSlaveConfig);
+
+	return ALL_OK;
+}
+
+uint8_t ReinitializeLEDDriver(struct LEDDriverHandle *handle) {
+	struct TIMChannelHandle *tim = handle->PWMTIM;
+
+	__HAL_TIM_SET_COMPARE(tim->Tim, tim->Channel, m_LEDDriverARR);
+	__HAL_TIM_SET_PRESCALER(tim->Tim, TIM_PWM_PSC);
+	__HAL_TIM_SET_AUTORELOAD(tim->Tim, m_LEDDriverARR);
+
+	return ALL_OK;
+}
+
 uint8_t InitializeBESCDriver(enum TIMChannel pwmTIMCh,
 		struct BESCDriverHandle *handle) {
 	struct TIMChannelHandle *tim = &m_TIMChannels[pwmTIMCh];

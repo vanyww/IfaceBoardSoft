@@ -82,4 +82,8 @@ uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data);
 uint8_t BCSDriverMoveToEnd(struct BCSDriverHandle *handle, uint8_t *data);
 uint8_t BCSDriverStop(struct BCSDriverHandle *handle);
 
+uint8_t ReinitializeBESCDriver(struct BESCDriverHandle *handle);
+uint8_t ReinitializeBCSDriver(struct BCSDriverHandle *handle);
+uint8_t ReinitializeLEDDriver(struct LEDDriverHandle *handle);
+
 #endif /* PERIPHERAL_DRIVERS_H_ */

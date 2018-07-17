@@ -223,7 +223,7 @@ int main(void)
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
   InitializeCommands();
-  LoadDeviceConfig();
+  SetDeviceConfiguration();
 
   __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
   __HAL_TIM_ENABLE_IT(&htim6, TIM_IT_UPDATE);

@@ -66,9 +66,9 @@ void SaveDeviceConfig(void) {
 			sizeof(ParamsUnion.Params.F_Devices));
 }
 
-void LoadDeviceConfig(void) {
+uint8_t LoadDeviceConfig(void) {
 	if (!ParamsUnion.Params.F_Devices.IsUsed)
-		return;
+		return ANY_ERROR;
 
 	BESCDriversCounter = ParamsUnion.Params.F_Devices.BESCDriversCounter;
 	BCSDriversCounter = ParamsUnion.Params.F_Devices.BCSDriversCounter;
@@ -80,6 +80,8 @@ void LoadDeviceConfig(void) {
 			sizeof(struct BCSDriverHandle) * BCS_DRIVERS_MAX);
 	memcpy(LEDDrivers, ParamsUnion.Params.F_Devices.LEDDrivers,
 			sizeof(struct LEDDriverHandle) * LED_DRIVERS_MAX);
+
+	return ALL_OK;
 }
 
 void ResetDeviceConfig(void) {
@@ -92,10 +94,31 @@ void ResetDeviceConfig(void) {
 			sizeof(ParamsUnion.Params.F_Devices.IsUsed));
 }
 
+void SetDeviceConfiguration() {
+	LoadDeviceConfig();
+
+	for(uint8_t i = 0; i < BESCDriversCounter; i++)
+		ReinitializeBESCDriver(&BESCDrivers[i]);
+
+	for(uint8_t i = 0; i < BCSDriversCounter; i++)
+		ReinitializeBCSDriver(&BCSDrivers[i]);
+
+	for(uint8_t i = 0; i < LEDDriversCounter; i++)
+		ReinitializeLEDDriver(&LEDDrivers[i]);
+}
+
 //
 uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
 		uint8_t *resultLength) {
 	*resultLength = 0;
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_Reset(struct ModbusRecvMessage *msg) {
+	NVIC_SystemReset();
 
 	return ALL_OK;
 }
@@ -142,17 +165,6 @@ uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg) {
 		return ANY_ERROR;
 
 	ResetDeviceConfig();
-
-	return ALL_OK;
-}
-//
-
-//
-uint8_t C_W_LoadDeviceConfiguration(struct ModbusRecvMessage *msg) {
-	if (msg->DataLength != 0)
-		return ANY_ERROR;
-
-	LoadDeviceConfig();
 
 	return ALL_OK;
 }
@@ -406,6 +418,7 @@ void InitializeCommands() {
 	AddCommand(0x01, NULL, &C_W_ChangeSlaveId);
 	AddCommand(0x02, NULL, &C_W_SaveDeviceConfiguration);
 	AddCommand(0x03, NULL, &C_W_ResetDeviceConfiguration);
+	AddCommand(0x04, NULL, &C_W_Reset);
 
 	AddCommand(0x10, &C_R_InitializeBESCDevice, NULL);
 	AddCommand(0x11, NULL, &C_W_BESCChangeSpeed);

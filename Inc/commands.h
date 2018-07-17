@@ -12,10 +12,7 @@
 #include "command_messaging.h"
 
 void InitializeCommands();
-
-void SaveDeviceConfig(void);
-void LoadDeviceConfig(void);
-void ResetDeviceConfig(void);
+void SetDeviceConfiguration();
 
 extern struct BESCDriverHandle BESCDrivers[4];
 extern uint8_t BESCDriversCounter;
