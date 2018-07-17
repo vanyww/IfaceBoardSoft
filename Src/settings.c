@@ -7,7 +7,6 @@
 
 #include "settings.h"
 #include "string.h"
-#include "math.h"
 
 #define MAX16BIT 0xFFFF
 

@@ -6,5 +6,5 @@ peripheral_drivers.c:155:9:BESCDriverChangeSpeed	48	static
 peripheral_drivers.c:170:9:LEDDriverChangeBrightness	32	static
 peripheral_drivers.c:183:9:BCSDriverChangeSpeed	48	static
 peripheral_drivers.c:200:9:BCSDriverMove	32	static
-peripheral_drivers.c:247:9:BCSDriverStop	16	static
-peripheral_drivers.c:257:9:BCSDriverMoveToEnd	24	static
+peripheral_drivers.c:252:9:BCSDriverStop	16	static
+peripheral_drivers.c:262:9:BCSDriverMoveToEnd	24	static

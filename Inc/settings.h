@@ -41,5 +41,6 @@ extern const union _ParamsUnion{
 
 void StartChangeFlashParam();
 void EndChangeFlashParam(void *changedParamAddress, uint32_t paramSize);
+void LoadDeviceConfig(void);
 
 #endif /* SETTINGS_H_ */

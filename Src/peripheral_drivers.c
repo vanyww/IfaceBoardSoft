@@ -207,9 +207,13 @@ uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data) {
 	if(steps > USHRT_MAX / 2) return ANY_ERROR;
 
 	uint16_t doneSteps = __HAL_TIM_GET_COUNTER(handle->PWMTIM->ComplementTIM);
-	int32_t leftSteps = __HAL_TIM_GET_AUTORELOAD(handle->PWMTIM->ComplementTIM) - doneSteps;
 
 	if(doneSteps != 0) {
+		__HAL_TIM_DISABLE(handle->PWMTIM->ComplementTIM);
+
+		doneSteps = __HAL_TIM_GET_COUNTER(handle->PWMTIM->ComplementTIM);
+		int32_t leftSteps = __HAL_TIM_GET_AUTORELOAD(handle->PWMTIM->ComplementTIM) - doneSteps;
+
 		if(handle->CurrentDirection == direction){
 			if(leftSteps > USHRT_MAX - steps)
 				return ANY_ERROR;
@@ -229,6 +233,7 @@ uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data) {
 
 		__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, steps);
 		__HAL_TIM_SET_COUNTER(handle->PWMTIM->ComplementTIM, 0);
+		__HAL_TIM_ENABLE(handle->PWMTIM->ComplementTIM);
 		return ALL_OK;
 	}
 
