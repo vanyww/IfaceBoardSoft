@@ -12,7 +12,7 @@
 #include "stddef.h"
 
 //max is 0xFF
-#define COMMANDS_NUMBER 0x0F
+#define COMMANDS_NUMBER 0x14
 
 enum CommandErrorCode {
 	CMD_ALL_OK = ALL_OK,

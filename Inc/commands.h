@@ -13,6 +13,10 @@
 
 void InitializeCommands();
 
+void SaveDeviceConfig(void);
+void LoadDeviceConfig(void);
+void ResetDeviceConfig(void);
+
 extern struct BESCDriverHandle BESCDrivers[4];
 extern uint8_t BESCDriversCounter;
 

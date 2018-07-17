@@ -7,18 +7,17 @@
 
 #include "settings.h"
 #include "string.h"
+#include "math.h"
 
 #define MAX16BIT 0xFFFF
 
 const union _ParamsUnion ParamsUnion;
-const struct ParamsStruct *PParams = &ParamsUnion.Params;
 
-uint16_t m_paramsBuffer[sizeof(struct ParamsStruct) / sizeof(uint16_t)];
+uint16_t m_paramsBuffer[sizeof(struct ParamsStruct) / sizeof(uint16_t) + 1];
 
 uint32_t m_pageError = 0;
-FLASH_EraseInitTypeDef m_eraseInitStruct = {.TypeErase = FLASH_TYPEERASE_PAGES,
-											.PageAddress = USER_DATA_FIRST_PAGE,
-											.NbPages = 1};
+FLASH_EraseInitTypeDef m_eraseInitStruct = { .TypeErase = FLASH_TYPEERASE_PAGES,
+		.PageAddress = USER_DATA_FIRST_PAGE, .NbPages = 1 };
 
 void BufferParams();
 void UnbufferParams(uint32_t changedAddress, uint32_t changedSize);
@@ -28,19 +27,23 @@ void BufferParams() {
 }
 
 void UnbufferParams(uint32_t changedAddress, uint32_t changedSize) {
-	uint32_t currentAddress = USER_DATA_FIRST_PAGE;
+	uint32_t currentAddress = (uint32_t)&ParamsUnion;
 
-	for(uint8_t i = 0; i < sizeof(struct ParamsStruct) / sizeof(uint16_t); i++, currentAddress += sizeof(uint16_t)) {
-		if(currentAddress == (uint32_t)changedAddress) {
-			currentAddress += changedSize;
+	for (uint8_t i = 0;
+			i < sizeof(struct ParamsStruct) / sizeof(uint16_t)
+							+ sizeof(struct ParamsStruct) % sizeof(uint16_t);
+			i++, currentAddress += sizeof(uint16_t)) {
+		if (currentAddress == (uint32_t) changedAddress) {
+			currentAddress += changedSize - sizeof(uint16_t);
 			i += changedSize / sizeof(uint16_t) - 1;
 			continue;
 		}
 
-		if(m_paramsBuffer[i] == MAX16BIT)
-			return;
+		if (m_paramsBuffer[i] == MAX16BIT)
+			continue;
 
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAddress, m_paramsBuffer[i]);
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAddress,
+				m_paramsBuffer[i]);
 	}
 }
 
@@ -52,6 +55,6 @@ void StartChangeFlashParam() {
 }
 
 void EndChangeFlashParam(void *changedParamAddress, uint32_t changedSize) {
-	UnbufferParams((uint32_t)changedParamAddress, changedSize);
+	UnbufferParams((uint32_t) changedParamAddress, changedSize);
 	HAL_FLASH_Lock();
 }

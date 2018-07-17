@@ -13,6 +13,10 @@
 #include "stdint.h"
 #include "defs.h"
 
+#define BESC_DRIVERS_MAX 4
+#define LED_DRIVERS_MAX 4
+#define BCS_DRIVERS_MAX 1
+
 enum ChannelState {
 	OCCUPIED, FREE
 };

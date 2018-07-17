@@ -10,15 +10,87 @@
 #include "string.h"
 #include "settings.h"
 
-struct BESCDriverHandle BESCDrivers[4];
+struct BESCDriverHandle BESCDrivers[BESC_DRIVERS_MAX];
 uint8_t BESCDriversCounter = 0;
 
 struct BCSDriverHandle *TIM1BCS;
-struct BCSDriverHandle BCSDrivers[1];
+struct BCSDriverHandle BCSDrivers[BCS_DRIVERS_MAX];
 uint8_t BCSDriversCounter = 0;
 
-struct LEDDriverHandle LEDDrivers[4];
+struct LEDDriverHandle LEDDrivers[LED_DRIVERS_MAX];
 uint8_t LEDDriversCounter = 0;
+
+void SaveDeviceConfig(void) {
+	StartChangeFlashParam();
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_Devices.IsUsed, (uint16_t) 0x1);
+
+	for (uint8_t i = 0;
+			i < BESC_DRIVERS_MAX * sizeof(struct BESCDriverHandle) / 2
+							+ BESC_DRIVERS_MAX * sizeof(struct BESCDriverHandle)
+									% 2; i++)
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+				(uint32_t) &ParamsUnion.Params.F_Devices.BESCDrivers
+						+ i * sizeof(uint16_t), ((uint16_t *) &BESCDrivers)[i]);
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_Devices.BESCDriversCounter,
+			(uint16_t) BESCDriversCounter);
+
+	for (uint8_t i = 0;
+			i < BCS_DRIVERS_MAX * sizeof(struct BCSDriverHandle) / 2
+							+ BCS_DRIVERS_MAX * sizeof(struct BCSDriverHandle)
+									% 2; i++)
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+				(uint32_t) &ParamsUnion.Params.F_Devices.BCSDrivers
+						+ i * sizeof(uint16_t), ((uint16_t *) &BCSDrivers)[i]);
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_Devices.BCSDriversCounter,
+			(uint16_t) BCSDriversCounter);
+
+	for (uint8_t i = 0;
+			i < LED_DRIVERS_MAX * sizeof(struct LEDDriverHandle) / 2
+							+ LED_DRIVERS_MAX * sizeof(struct LEDDriverHandle)
+									% 2; i++)
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+				(uint32_t) &ParamsUnion.Params.F_Devices.LEDDrivers
+						+ i * sizeof(uint16_t), ((uint16_t *) &LEDDrivers)[i]);
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_Devices.LEDDriversCounter,
+			(uint16_t) LEDDriversCounter);
+
+	EndChangeFlashParam((void *) &ParamsUnion.Params.F_Devices,
+			sizeof(ParamsUnion.Params.F_Devices));
+}
+
+void LoadDeviceConfig(void) {
+	if (!ParamsUnion.Params.F_Devices.IsUsed)
+		return;
+
+	BESCDriversCounter = ParamsUnion.Params.F_Devices.BESCDriversCounter;
+	BCSDriversCounter = ParamsUnion.Params.F_Devices.BCSDriversCounter;
+	LEDDriversCounter = ParamsUnion.Params.F_Devices.LEDDriversCounter;
+
+	memcpy(BESCDrivers, ParamsUnion.Params.F_Devices.BESCDrivers,
+			sizeof(struct BESCDriverHandle) * BESC_DRIVERS_MAX);
+	memcpy(BCSDrivers, ParamsUnion.Params.F_Devices.BCSDrivers,
+			sizeof(struct BCSDriverHandle) * BCS_DRIVERS_MAX);
+	memcpy(LEDDrivers, ParamsUnion.Params.F_Devices.LEDDrivers,
+			sizeof(struct LEDDriverHandle) * LED_DRIVERS_MAX);
+}
+
+void ResetDeviceConfig(void) {
+	StartChangeFlashParam();
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_Devices.IsUsed, (uint16_t) 0x0);
+
+	EndChangeFlashParam((void *) &ParamsUnion.Params.F_Devices.IsUsed,
+			sizeof(ParamsUnion.Params.F_Devices.IsUsed));
+}
 
 //
 uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
@@ -31,21 +103,56 @@ uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
 
 //
 uint8_t C_W_ChangeSlaveId(struct ModbusRecvMessage *msg) {
-	if(msg->DataLength != sizeof(uint8_t))
+	if (msg->DataLength != sizeof(uint8_t))
 		return ANY_ERROR;
 
 	uint8_t newId = msg->Data[0];
 
-	if(newId == 0)
+	if (!newId)
 		return ANY_ERROR;
 
 	StartChangeFlashParam();
 
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, (uint32_t)&ParamsUnion.Params.F_SlaveId, (uint16_t)newId);
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_SlaveId, (uint16_t) newId);
 
-	EndChangeFlashParam((void *)&ParamsUnion.Params.F_SlaveId, sizeof(uint16_t));
+	EndChangeFlashParam((void *) &ParamsUnion.Params.F_SlaveId,
+			sizeof(ParamsUnion.Params.F_SlaveId));
 
 	SlaveId = newId;
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_SaveDeviceConfiguration(struct ModbusRecvMessage *msg) {
+	if (msg->DataLength != 0)
+		return ANY_ERROR;
+
+	SaveDeviceConfig();
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg) {
+	if (msg->DataLength != 0)
+		return ANY_ERROR;
+
+	ResetDeviceConfig();
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_LoadDeviceConfiguration(struct ModbusRecvMessage *msg) {
+	if (msg->DataLength != 0)
+		return ANY_ERROR;
+
+	LoadDeviceConfig();
 
 	return ALL_OK;
 }
@@ -62,7 +169,7 @@ uint8_t C_R_InitializeBESCDevice(struct ModbusRecvMessage *msg, uint8_t *result,
 		return ANY_ERROR;
 
 	*result = BESCDriversCounter++;
-	*resultLength = 1;
+	*resultLength = sizeof(BESCDriversCounter);
 
 	return ALL_OK;
 }
@@ -79,7 +186,7 @@ uint8_t C_R_InitializeLEDDevice(struct ModbusRecvMessage *msg, uint8_t *result,
 		return ANY_ERROR;
 
 	*result = LEDDriversCounter++;
-	*resultLength = 1;
+	*resultLength = sizeof(LEDDriversCounter);
 
 	return ALL_OK;
 }
@@ -107,13 +214,11 @@ uint8_t C_R_InitializeBCSDevice(struct ModbusRecvMessage *msg, uint8_t *result,
 			terminalChannel, handle))
 		return ANY_ERROR;
 
-	//
 	if (handle->PWMTIM->ComplementTIM->Instance == TIM1)
 		TIM1BCS = handle;
-	//
 
 	*result = BCSDriversCounter++;
-	*resultLength = 1;
+	*resultLength = sizeof(BCSDriversCounter);
 
 	return ALL_OK;
 }
@@ -228,8 +333,9 @@ uint8_t C_W_BCS_MoveToEnd(struct ModbusRecvMessage *msg) {
 //
 uint8_t C_R_MS5837_CheckConnection(struct ModbusRecvMessage *msg,
 		uint8_t *result, uint8_t *resultLength) {
-	*resultLength = 1;
-	*result = MS5837IsConnected();
+	enum MS5837ErrorCode status = MS5837IsConnected();
+	*resultLength = sizeof(status);
+	*result = status;
 
 	return ALL_OK;
 }
@@ -245,7 +351,7 @@ uint8_t C_R_MS5837_ReadTemp(struct ModbusRecvMessage *msg, uint8_t *result,
 	if (MS5837ReadTemperature(d2osr, &temp))
 		return ANY_ERROR;
 
-	*resultLength = sizeof(float);
+	*resultLength = sizeof(temp);
 	memcpy(result, &temp, sizeof(float));
 
 	return ALL_OK;
@@ -258,17 +364,34 @@ uint8_t C_R_MS5837_ReadTempAndPress(struct ModbusRecvMessage *msg,
 					+ sizeof(enum MS5837D1OSRCommand))
 		return ANY_ERROR;
 
-	enum MS5837D1OSRCommand d1osr = msg->Data[0];
-	enum MS5837D2OSRCommand d2osr = msg->Data[1];
-	float temp;
-	float press;
+	enum MS5837D1OSRCommand d1osr = msg->Data[0], d2osr = msg->Data[1];
+	float temp, press;
 
 	if (MS5837ReadTemperatureAndPressure(d1osr, d2osr, &temp, &press))
 		return ANY_ERROR;
 
-	*resultLength = 2*sizeof(float);
+	*resultLength = sizeof(temp) + sizeof(press);
 	memcpy(result, &temp, sizeof(float));
 	memcpy(result + sizeof(float), &press, sizeof(float));
+
+	return ALL_OK;
+}
+
+uint8_t C_R_MS5837_ReadPress(struct ModbusRecvMessage *msg, uint8_t *result,
+		uint8_t *resultLength) {
+	if (msg->DataLength
+			!= sizeof(enum MS5837D2OSRCommand)
+					+ sizeof(enum MS5837D1OSRCommand))
+		return ANY_ERROR;
+
+	enum MS5837D1OSRCommand d1osr = msg->Data[0], d2osr = msg->Data[1];
+	float press, temp;
+
+	if (MS5837ReadTemperatureAndPressure(d1osr, d2osr, &temp, &press))
+		return ANY_ERROR;
+
+	*resultLength = sizeof(press);
+	memcpy(result, &press, sizeof(float));
 
 	return ALL_OK;
 }
@@ -281,6 +404,8 @@ void InitializeCommands() {
 
 	AddCommand(0x00, &C_R_Ping, NULL);
 	AddCommand(0x01, NULL, &C_W_ChangeSlaveId);
+	AddCommand(0x02, NULL, &C_W_SaveDeviceConfiguration);
+	AddCommand(0x03, NULL, &C_W_ResetDeviceConfiguration);
 
 	AddCommand(0x10, &C_R_InitializeBESCDevice, NULL);
 	AddCommand(0x11, NULL, &C_W_BESCChangeSpeed);
@@ -297,4 +422,5 @@ void InitializeCommands() {
 	AddCommand(0x40, &C_R_MS5837_CheckConnection, NULL);
 	AddCommand(0x41, &C_R_MS5837_ReadTemp, NULL);
 	AddCommand(0x42, &C_R_MS5837_ReadTempAndPress, NULL);
+	AddCommand(0x43, &C_R_MS5837_ReadPress, NULL);
 }
