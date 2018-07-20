@@ -1,8 +1,0 @@
-main.c:92:6:HAL_UART_RxHalfCpltCallback	16	static
-main.c:126:6:HAL_UART_RxCpltCallback	16	static
-main.c:160:6:HAL_GPIO_EXTI_Callback	16	static
-main.c:169:6:HAL_TIM_PeriodElapsedCallback	24	static
-main.c:228:5:main	8	static
-main.c:317:6:SystemClock_Config	96	static
-main.c:376:13:MX_NVIC_Init	8	static
-main.c:414:6:_Error_Handler	16	static

@@ -1,6 +1,0 @@
-modbus.c:48:16:IsFunctionCode	24	static
-modbus.c:56:6:EncodeReplyWrite	40	static
-modbus.c:75:6:EncodeReplyRead	40	static
-modbus.c:90:22:DecodeRequest	24	static
-modbus.c:118:22:ProcessError	24	static
-modbus.c:123:6:InitializeModbus	16	static
