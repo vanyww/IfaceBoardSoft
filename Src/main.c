@@ -63,6 +63,12 @@ static uint8_t m_USART1dmaRxBuffer[USART_RX_BUFFER_LENGTH],
 			   m_USART2TxBuffer[MAX_MESSAGE_SIZE],
 			   m_USART2RxBufferLength = 0;
 
+enum _RXOverflow {
+	NORMAL = 0,
+	OVERFLOW = 1
+} m_USART1Overflow = NORMAL,
+  m_USART2Overflow = NORMAL;
+
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE END PV */
@@ -90,6 +96,14 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
 
 		__HAL_TIM_SET_COUNTER(&htim6, 0);
 		m_USART1RxBuffer[m_USART1RxBufferLength++] = m_USART1dmaRxBuffer[0];
+
+		if(m_USART1RxBufferLength == MAX_MESSAGE_SIZE) {
+			m_USART1Overflow = OVERFLOW;
+			m_USART1RxBufferLength = 0;
+			return;
+		}
+
+		return;
 	}
 
 	if (huart->Instance == USART2) {
@@ -98,6 +112,14 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
 
 		__HAL_TIM_SET_COUNTER(&htim16, 0);
 		m_USART2RxBuffer[m_USART2RxBufferLength++] = m_USART2dmaRxBuffer[0];
+
+		if(m_USART2RxBufferLength == MAX_MESSAGE_SIZE) {
+			m_USART2Overflow = OVERFLOW;
+			m_USART2RxBufferLength = 0;
+			return;
+		}
+
+		return;
 	}
 }
 
@@ -108,6 +130,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 		__HAL_TIM_SET_COUNTER(&htim6, 0);
 		m_USART1RxBuffer[m_USART1RxBufferLength++] = m_USART1dmaRxBuffer[1];
+
+		if(m_USART1RxBufferLength == MAX_MESSAGE_SIZE) {
+			m_USART1Overflow = OVERFLOW;
+			m_USART1RxBufferLength = 0;
+			return;
+		}
+
+		return;
 	}
 
 	if (huart->Instance == USART2) {
@@ -116,6 +146,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 		__HAL_TIM_SET_COUNTER(&htim16, 0);
 		m_USART2RxBuffer[m_USART2RxBufferLength++] = m_USART2dmaRxBuffer[1];
+
+		if(m_USART2RxBufferLength == MAX_MESSAGE_SIZE) {
+			m_USART2Overflow = OVERFLOW;
+			m_USART2RxBufferLength = 0;
+			return;
+		}
+
+		return;
 	}
 }
 
@@ -130,11 +168,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if (htim->Instance == TIM14) {
-		__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
+		//__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
 		return;
 	}
 
 	if (htim->Instance == TIM6) {
+		if(m_USART1Overflow == OVERFLOW) {
+			m_USART1RxBufferLength = 0;
+			m_USART1Overflow = NORMAL;
+			return;
+		}
+
 		uint8_t resultLength;
 
 		if (ProcessCommand(m_USART1RxBuffer, m_USART1RxBufferLength, m_USART1TxBuffer,
@@ -149,6 +193,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	}
 
 	if (htim->Instance == TIM16) {
+		if(m_USART2Overflow == OVERFLOW) {
+			m_USART2RxBufferLength = 0;
+			m_USART2Overflow = NORMAL;
+			return;
+		}
+
 		uint8_t resultLength;
 
 		if (ProcessCommand(m_USART2RxBuffer, m_USART2RxBufferLength, m_USART2TxBuffer,
@@ -216,7 +266,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM14_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_TIM16_Init();
 
   /* Initialize interrupts */

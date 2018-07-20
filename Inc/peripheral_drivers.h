@@ -8,10 +8,10 @@
 #ifndef PERIPHERAL_DRIVERS_H_
 #define PERIPHERAL_DRIVERS_H_
 
-#include "gpio.h"
-#include "tim.h"
 #include "stdint.h"
 #include "defs.h"
+#include "gpio.h"
+#include "tim.h"
 
 #define BESC_DRIVERS_MAX 4
 #define LED_DRIVERS_MAX 4
@@ -64,6 +64,8 @@ struct BCSDriverHandle {
 };
 
 void InitializeDriversWorker();
+
+uint8_t ChangeUSARTBaudRate(uint8_t usartId, uint32_t baud);
 
 uint8_t InitializeBESCDriver(enum TIMChannel pwmTIMCh,
 		struct BESCDriverHandle *handle);

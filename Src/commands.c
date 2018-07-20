@@ -117,6 +117,22 @@ uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
 //
 
 //
+uint8_t C_W_ChangeBaudRate(struct ModbusRecvMessage *msg) {
+	if (msg->DataLength != sizeof(uint8_t) + sizeof(uint32_t))
+		return ANY_ERROR;
+
+	uint8_t usartId = msg->Data[0];
+	uint32_t newBaudRate;
+
+	memcpy(&newBaudRate, &msg->Data[sizeof(uint8_t)], sizeof(newBaudRate));
+
+	ChangeUSARTBaudRate(usartId, newBaudRate);
+
+	return ALL_OK;
+}
+//
+
+//
 uint8_t C_W_Reset(struct ModbusRecvMessage *msg) {
 	NVIC_SystemReset();
 
@@ -414,24 +430,30 @@ void InitializeCommands() {
 	InitializeDriversWorker();
 	MS5837Init();
 
+	//System
 	AddCommand(0x00, &C_R_Ping, NULL);
 	AddCommand(0x01, NULL, &C_W_ChangeSlaveId);
 	AddCommand(0x02, NULL, &C_W_SaveDeviceConfiguration);
 	AddCommand(0x03, NULL, &C_W_ResetDeviceConfiguration);
 	AddCommand(0x04, NULL, &C_W_Reset);
+	AddCommand(0x05, NULL, &C_W_ChangeBaudRate);
 
+	//BESC
 	AddCommand(0x10, &C_R_InitializeBESCDevice, NULL);
 	AddCommand(0x11, NULL, &C_W_BESCChangeSpeed);
 
+	//LED
 	AddCommand(0x20, &C_R_InitializeLEDDevice, NULL);
 	AddCommand(0x21, NULL, &C_W_LEDChangeBrightness);
 
+	//BCS
 	AddCommand(0x30, &C_R_InitializeBCSDevice, NULL);
 	AddCommand(0x31, NULL, &C_W_BCS_ChangeSpeed);
 	AddCommand(0x32, NULL, &C_W_BCS_Move);
 	AddCommand(0x33, NULL, &C_W_BCS_MoveToEnd);
 	AddCommand(0x34, NULL, &C_W_BCS_Stop);
 
+	//MS5837
 	AddCommand(0x40, &C_R_MS5837_CheckConnection, NULL);
 	AddCommand(0x41, &C_R_MS5837_ReadTemp, NULL);
 	AddCommand(0x42, &C_R_MS5837_ReadTempAndPress, NULL);

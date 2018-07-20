@@ -29,7 +29,8 @@ struct DevicesStruct {
 };
 
 struct ParamsStruct {
-	const uint64_t F_BaudRate;
+	const uint32_t F_USART1BaudRate;
+	const uint32_t F_USART2BaudRate;
 	const uint16_t F_SlaveId;
 	const struct DevicesStruct F_Devices;
 };

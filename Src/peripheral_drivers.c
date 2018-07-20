@@ -10,6 +10,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "limits.h"
+#include "usart.h"
 
 #define TIM_PWM_PSC (10 - 1)
 
@@ -58,6 +59,22 @@ void InitializeDriversWorker() {
 			/ ((TIM_PWM_PSC + 1) * BCS_MAX_FREQUENCY) - 1;
 	m_BCSDriverMaxARR = SystemCoreClock
 			/ ((TIM_PWM_PSC + 1) * BCS_MIN_FREQUECNY) - 1;
+}
+
+uint8_t ChangeUSARTBaudRate(uint8_t usartId, uint32_t baud) {
+	switch(usartId) {
+	case 1:
+		huart1.Init.BaudRate =  baud;
+		HAL_UART_Init(&huart1);
+		break;
+
+	case 2:
+		huart2.Init.BaudRate =  baud;
+		HAL_UART_Init(&huart2);
+		break;
+	}
+
+	return ALL_OK;
 }
 
 uint8_t ReinitializeBESCDriver(struct BESCDriverHandle *handle) {
