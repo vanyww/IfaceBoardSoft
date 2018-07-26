@@ -1,3 +1,4 @@
+
 /*
  * settings.h
  *
@@ -13,7 +14,7 @@
 #include "peripheral_drivers.h"
 #include "stm32f0xx_hal_flash_ex.h"
 
-#define USER_DATA_FIRST_PAGE 0x800F800
+#define USER_DATA_PAGE 0x800FC00
 
 struct DevicesStruct {
 	uint16_t IsUsed;
@@ -29,18 +30,19 @@ struct DevicesStruct {
 };
 
 struct ParamsStruct {
+	const uint16_t F_SlaveId;
 	const uint32_t F_USART1BaudRate;
 	const uint32_t F_USART2BaudRate;
-	const uint16_t F_SlaveId;
 	const struct DevicesStruct F_Devices;
 };
 
-extern const union _ParamsUnion{
+__IO extern const union _ParamsUnion{
 	const struct ParamsStruct Params;
 	const uint16_t Bytes[sizeof(struct ParamsStruct) / sizeof(uint16_t)];
 } ParamsUnion __attribute__((__section__(".user_data")));
 
 void StartChangeFlashParam();
 void EndChangeFlashParam(void *changedParamAddress, uint32_t paramSize);
+void InitializeFlash(void);
 
 #endif /* SETTINGS_H_ */

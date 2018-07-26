@@ -74,11 +74,11 @@ uint8_t LoadDeviceConfig(void) {
 	BCSDriversCounter = ParamsUnion.Params.F_Devices.BCSDriversCounter;
 	LEDDriversCounter = ParamsUnion.Params.F_Devices.LEDDriversCounter;
 
-	memcpy(BESCDrivers, ParamsUnion.Params.F_Devices.BESCDrivers,
+	volmemcpy(BESCDrivers, ParamsUnion.Params.F_Devices.BESCDrivers,
 			sizeof(struct BESCDriverHandle) * BESC_DRIVERS_MAX);
-	memcpy(BCSDrivers, ParamsUnion.Params.F_Devices.BCSDrivers,
+	volmemcpy(BCSDrivers, ParamsUnion.Params.F_Devices.BCSDrivers,
 			sizeof(struct BCSDriverHandle) * BCS_DRIVERS_MAX);
-	memcpy(LEDDrivers, ParamsUnion.Params.F_Devices.LEDDrivers,
+	volmemcpy(LEDDrivers, ParamsUnion.Params.F_Devices.LEDDrivers,
 			sizeof(struct LEDDriverHandle) * LED_DRIVERS_MAX);
 
 	return ALL_OK;
@@ -429,6 +429,7 @@ void InitializeCommands() {
 	InitializeModbus();
 	InitializeDriversWorker();
 	MS5837Init();
+	InitializeFlash();
 
 	//System
 	AddCommand(0x00, &C_R_Ping, NULL);

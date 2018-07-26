@@ -10,19 +10,19 @@
 
 #define MAX16BIT 0xFFFF
 
-const union _ParamsUnion ParamsUnion;
+__IO const union _ParamsUnion ParamsUnion;
 
 uint16_t m_paramsBuffer[sizeof(struct ParamsStruct) / sizeof(uint16_t) + 1];
 
 uint32_t m_pageError = 0;
 FLASH_EraseInitTypeDef m_eraseInitStruct = { .TypeErase = FLASH_TYPEERASE_PAGES,
-		.PageAddress = USER_DATA_FIRST_PAGE, .NbPages = 1 };
+		.PageAddress = USER_DATA_PAGE, .NbPages = 1 };
 
 void BufferParams();
 void UnbufferParams(uint32_t changedAddress, uint32_t changedSize);
 
 void BufferParams() {
-	memcpy(m_paramsBuffer, ParamsUnion.Bytes, sizeof(struct ParamsStruct));
+	volmemcpy(m_paramsBuffer, ParamsUnion.Bytes, sizeof(struct ParamsStruct));
 }
 
 void UnbufferParams(uint32_t changedAddress, uint32_t changedSize) {
@@ -57,3 +57,10 @@ void EndChangeFlashParam(void *changedParamAddress, uint32_t changedSize) {
 	UnbufferParams((uint32_t) changedParamAddress, changedSize);
 	HAL_FLASH_Lock();
 }
+
+void InitializeFlash(void) {
+	  HAL_FLASH_Unlock();
+	  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+	  HAL_FLASH_Lock();
+}
+

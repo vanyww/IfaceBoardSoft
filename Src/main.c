@@ -70,7 +70,9 @@ enum _RXOverflow {
   m_USART2Overflow = NORMAL;
 
 /* Private variables ---------------------------------------------------------*/
-
+#if defined   (  __GNUC__  )
+__IO uint32_t VectorTable[48] __attribute__((section(".RAMVectorTable")));
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -168,7 +170,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if (htim->Instance == TIM14) {
-		//__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
+		__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
 		return;
 	}
 
@@ -252,6 +254,14 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  for(uint8_t i = 0; i < 48; i++)
+  {
+    VectorTable[i] = *(__IO uint32_t*)(0x8003000 + (i<<2));
+  }
+
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  /* Remap SRAM at 0x00000000 */
+  __HAL_SYSCFG_REMAPMEMORY_SRAM();
 
   /* USER CODE END SysInit */
 
@@ -266,7 +276,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM14_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_TIM16_Init();
 
   /* Initialize interrupts */
