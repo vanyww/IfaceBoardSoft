@@ -54,14 +54,16 @@ enum CommandErrorCode ProcessCommand(uint8_t *recvBuffer,
 			return CMD_ALL_OK;
 		}
 
-		case WRITE:
+		case WRITE: {
+			uint16_t writtenSize;
 			if(calledCommand->WriteFunction == NULL)
 				return CMD_NO_SUBCOMMAND;
 
-			if(calledCommand->WriteFunction(&m_message))
+			if(calledCommand->WriteFunction(&m_message, &writtenSize))
 				return CMD_ANY_ERROR;
-			EncodeReplyWrite(&m_message, sendBuffer, resultLength);
+			EncodeReplyWrite(&m_message, writtenSize, sendBuffer, resultLength);
 			return CMD_ALL_OK;
+		}
 	}
 
 	return CMD_ANY_ERROR;

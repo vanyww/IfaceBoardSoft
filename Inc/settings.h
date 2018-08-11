@@ -36,7 +36,7 @@ struct ParamsStruct {
 	const struct DevicesStruct F_Devices;
 };
 
-__IO extern const union _ParamsUnion{
+volatile extern const union _ParamsUnion{
 	const struct ParamsStruct Params;
 	const uint16_t Bytes[sizeof(struct ParamsStruct) / sizeof(uint16_t)];
 } ParamsUnion __attribute__((__section__(".user_data")));

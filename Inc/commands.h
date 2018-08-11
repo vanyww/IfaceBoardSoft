@@ -11,8 +11,9 @@
 #include "peripheral_drivers.h"
 #include "command_messaging.h"
 
-void InitializeCommands();
-void SetDeviceConfiguration();
+void LoadUARTBaud(void);
+void InitializeCommands(void);
+void SetDeviceConfiguration(void);
 
 extern struct BESCDriverHandle BESCDrivers[4];
 extern uint8_t BESCDriversCounter;

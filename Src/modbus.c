@@ -9,14 +9,16 @@
 #include "modbus.h"
 #include "settings.h"
 
-#define FUNCTIONS_NUMBER 2
-
 //Request data indexes
 #define RQ_SLAVE_ID_INDEX 0
 #define RQ_FUNCTION_INDEX 1
 #define RQ_COMMAND_INDEX 2
-#define RQ_DATA_INDEX 4
-#define RQ_CRC_INDEX -2
+#define RQ_REGISTERS_NUMBER_INDEX 4
+#define RQ_CRC_NEGINDEX -2
+
+#define RQ_W_DATA_COUNT_SIZE 1
+#define RQ_W_DATA_COUNT_INDEX 6
+#define RQ_W_DATA_INDEX 7
 
 //Reply data indexes
 #define RP_SLAVE_ID_INDEX 0
@@ -35,39 +37,37 @@
 #define ADDRESS_LENGTH 2
 #define RP_W_NO_CRC_NO_DATA_LENGTH 4
 #define RP_R_NO_CRC_NO_DATA_LENGTH 3
+#define RQ_REGISTERS_COUNT_LENGTH 2
 
 #define ERROR_FUNCTION_BIT 0x80
 
 static const uint16_t m_defaultSlaveId = 1;
 uint16_t SlaveId;
 
-static const uint8_t m_funcEnumValues[] = { READ, WRITE };
+enum ModbusErrorCode DecodeRequestWrite(uint8_t *rawRequest,
+		uint8_t requestLength, struct ModbusRecvMessage *mbusMessage);
+enum ModbusErrorCode DecodeRequestRead(uint8_t *rawRequest,
+		uint8_t requestLength, struct ModbusRecvMessage *mbusMessage);
 
-static uint8_t IsFunctionCode(uint8_t value);
-
-static uint8_t IsFunctionCode(uint8_t value) {
-	for (uint8_t i = 0; i < FUNCTIONS_NUMBER; i++)
-		if (m_funcEnumValues[i] == value)
-			return ALL_OK;
-
-	return ANY_ERROR;
-}
-
-void EncodeReplyWrite(struct ModbusRecvMessage *mbusMessage, uint8_t *rawReply,
-		uint8_t *rawReplyLength) {
+void EncodeReplyWrite(struct ModbusRecvMessage *mbusMessage,
+		uint16_t writtenDataLength, uint8_t *rawReply, uint8_t *rawReplyLength) {
 	rawReply[RP_SLAVE_ID_INDEX] = mbusMessage->Slave;
 	rawReply[RP_FUNCTION_INDEX] = mbusMessage->Function;
 	rawReply[RP_W_COMMAND_INDEX] = mbusMessage->Command.Bytes[0];
 	rawReply[RP_W_COMMAND_INDEX + 1] = mbusMessage->Command.Bytes[1];
 
-	for (uint16_t i = 0; i < mbusMessage->DataLength; i++)
-		rawReply[RP_W_DATA_INDEX + i] = mbusMessage->Data[i];
-	*rawReplyLength = RP_W_NO_CRC_NO_DATA_LENGTH + mbusMessage->DataLength;
+	uint16_t writtenRegistersCount = writtenDataLength / sizeof(uint16_t);
+
+	rawReply[RP_W_DATA_INDEX] = (uint8_t) writtenRegistersCount >> 8;
+	rawReply[RP_W_DATA_INDEX + 1] = (uint8_t) writtenRegistersCount;
+
+
+	*rawReplyLength = RP_W_NO_CRC_NO_DATA_LENGTH + 2;
 
 	uint16_t crc16 = CRC16(rawReply, *rawReplyLength);
 
-	rawReply[*rawReplyLength] = (uint8_t) crc16;
-	rawReply[*rawReplyLength + 1] = (uint8_t) (crc16 >> 8);
+	rawReply[*rawReplyLength] = (uint8_t) (crc16 >> 8);
+	rawReply[*rawReplyLength + 1] = (uint8_t) crc16;
 
 	*rawReplyLength += CRC_LENGTH;
 }
@@ -81,8 +81,8 @@ void EncodeReplyRead(struct ModbusRecvMessage *mbusMessage, uint8_t *resultData,
 
 	uint16_t crc16 = CRC16(resultData, *resultDataLength);
 
-	resultData[*resultDataLength] = (uint8_t) crc16;
-	resultData[*resultDataLength + 1] = (uint8_t) (crc16 >> 8);
+	resultData[*resultDataLength] = (uint8_t) (crc16 >> 8);
+	resultData[*resultDataLength + 1] = (uint8_t) crc16;
 
 	*resultDataLength += CRC_LENGTH;
 }
@@ -97,19 +97,40 @@ enum ModbusErrorCode DecodeRequest(uint8_t *rawRequest, uint8_t requestLength,
 		return MBS_ILLEGAl_DATA;
 
 	if (CRC16(rawRequest, requestLength - CRC_LENGTH) !=
-	BYTES_2_SHORT(rawRequest[requestLength + RQ_CRC_INDEX],
-			rawRequest[requestLength + RQ_CRC_INDEX + 1]))
+	BYTES_2_SHORT(rawRequest[requestLength + RQ_CRC_NEGINDEX + 1],
+			rawRequest[requestLength + RQ_CRC_NEGINDEX]))
 		return MBS_ILLEGAL_CRC;
 
 	mbusMessage->Function = rawRequest[RQ_FUNCTION_INDEX];
-	if (IsFunctionCode(mbusMessage->Function))
-		return MBS_ILLEGAL_FUNCTION;
 
-	mbusMessage->Data = rawRequest + RQ_DATA_INDEX;
-	mbusMessage->DataLength = requestLength - CRC_LENGTH - SLAVE_ID_LENGTH
-			- FUNCTION_LENGTH - ADDRESS_LENGTH;
-	mbusMessage->Command.Bytes[0] = rawRequest[RQ_COMMAND_INDEX];
-	mbusMessage->Command.Bytes[1] = rawRequest[RQ_COMMAND_INDEX + 1];
+	mbusMessage->RegistersCount = BYTES_2_SHORT(
+			rawRequest[RQ_REGISTERS_NUMBER_INDEX + 1],
+			rawRequest[RQ_REGISTERS_NUMBER_INDEX]);
+
+	mbusMessage->Command.Bytes[0] = rawRequest[RQ_COMMAND_INDEX + 1];
+	mbusMessage->Command.Bytes[1] = rawRequest[RQ_COMMAND_INDEX];
+
+	switch (mbusMessage->Function) {
+	case READ:
+		return MBS_ALL_OK;
+	case WRITE:
+		return DecodeRequestWrite(rawRequest, requestLength, mbusMessage);
+	default:
+		return MBS_ILLEGAL_FUNCTION;
+	}
+}
+
+enum ModbusErrorCode DecodeRequestWrite(uint8_t *rawRequest,
+		uint8_t requestLength, struct ModbusRecvMessage *mbusMessage) {
+	mbusMessage->DataLength = requestLength - ADDRESS_LENGTH - SLAVE_ID_LENGTH
+			- FUNCTION_LENGTH - CRC_LENGTH - RQ_W_DATA_COUNT_SIZE - RQ_REGISTERS_COUNT_LENGTH;
+
+	if (mbusMessage->DataLength != rawRequest[RQ_W_DATA_COUNT_INDEX]
+			|| mbusMessage->DataLength / 2 + mbusMessage->DataLength % 2
+					!= mbusMessage->RegistersCount)
+		return MBS_ILLEGAl_DATA;
+
+	mbusMessage->Data = &rawRequest[RQ_W_DATA_INDEX];
 
 	return MBS_ALL_OK;
 }

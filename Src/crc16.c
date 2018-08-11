@@ -67,5 +67,5 @@ uint16_t CRC16(uint8_t *puchMsg, uint16_t usDataLen) {
 		uchCRCLo = auchCRCLo[uIndex];
 	}
 
-	return (uchCRCLo << 8 | uchCRCHi);
+	return (uchCRCLo | uchCRCHi << 8);
 }

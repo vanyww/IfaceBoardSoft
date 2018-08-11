@@ -31,8 +31,7 @@ enum ModbusErrorCode {
 };
 
 enum FunctionCode {
-	READ = 0x46,
-	WRITE = 0x47
+	READ = 0x03, WRITE = 0x10
 };
 
 union CommandUnion {
@@ -44,26 +43,22 @@ struct ModbusRecvMessage {
 	uint8_t Slave;
 	enum FunctionCode Function;
 	union CommandUnion Command;
+	uint16_t RegistersCount;
 	uint8_t DataLength;
 	uint8_t *Data;
 };
 
 void EncodeReplyWrite(struct ModbusRecvMessage *mbusMessage,
-					  uint8_t *rawReply,
-					  uint8_t *rawReplyLength);
+		uint16_t writtenDataLength, uint8_t *rawReply, uint8_t *rawReplyLength);
 
-void EncodeReplyRead(struct ModbusRecvMessage *mbusMessage,
-					 uint8_t *resultData,
-					 uint8_t commandResultLength,
-					 uint8_t *resultDataLength);
+void EncodeReplyRead(struct ModbusRecvMessage *mbusMessage, uint8_t *resultData,
+		uint8_t commandResultLength, uint8_t *resultDataLength);
 
-enum ModbusErrorCode DecodeRequest(uint8_t *rawRequest,
-					  uint8_t requestLength,
-					  struct ModbusRecvMessage *mbusMessage);
+enum ModbusErrorCode DecodeRequest(uint8_t *rawRequest, uint8_t requestLength,
+		struct ModbusRecvMessage *mbusMessage);
 
 enum ModbusErrorCode ProcessError(enum ModbusErrorCode error,
-					 	 	 	  uint8_t *sendBuffer,
-								  uint8_t *resultLength);
+		uint8_t *sendBuffer, uint8_t *resultLength);
 
 void InitializeModbus(void);
 

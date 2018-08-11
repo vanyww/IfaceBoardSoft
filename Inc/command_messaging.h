@@ -23,7 +23,8 @@ enum CommandErrorCode {
 	CMD_ANY_ERROR = ANY_ERROR
 };
 
-typedef uint8_t (*WriteCommandFunction)(struct ModbusRecvMessage *msg);
+typedef uint8_t (*WriteCommandFunction)(struct ModbusRecvMessage *msg,
+										uint16_t *writtenDataLength);
 
 typedef uint8_t (*ReadCommandFunction)(struct ModbusRecvMessage *msg,
 									   uint8_t *result,

@@ -63,7 +63,7 @@ struct BCSDriverHandle {
 	enum Direction CurrentDirection;
 };
 
-void InitializeDriversWorker();
+void InitializeDriversWorker(void);
 
 uint8_t ChangeUSARTBaudRate(uint8_t usartId, uint32_t baud);
 

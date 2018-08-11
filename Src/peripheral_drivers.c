@@ -50,7 +50,7 @@ static struct GPIOChannelHandle m_GPIOChannels[] = {
 static uint32_t m_BESCDriverARR, m_LEDDriverARR, m_BCSDriverMaxARR,
 		m_BCSDriverMinARR;
 
-void InitializeDriversWorker() {
+void InitializeDriversWorker(void) {
 	m_BESCDriverARR = SystemCoreClock / ((TIM_PWM_PSC + 1) * BESC_PWM_FREQUENCY)
 			- 1;
 	m_LEDDriverARR = SystemCoreClock / ((TIM_PWM_PSC + 1) * LED_PWM_FREQUENCY)
@@ -59,22 +59,6 @@ void InitializeDriversWorker() {
 			/ ((TIM_PWM_PSC + 1) * BCS_MAX_FREQUENCY) - 1;
 	m_BCSDriverMaxARR = SystemCoreClock
 			/ ((TIM_PWM_PSC + 1) * BCS_MIN_FREQUECNY) - 1;
-}
-
-uint8_t ChangeUSARTBaudRate(uint8_t usartId, uint32_t baud) {
-	switch(usartId) {
-	case 1:
-		huart1.Init.BaudRate =  baud;
-		HAL_UART_Init(&huart1);
-		break;
-
-	case 2:
-		huart2.Init.BaudRate =  baud;
-		HAL_UART_Init(&huart2);
-		break;
-	}
-
-	return ALL_OK;
 }
 
 uint8_t ReinitializeBESCDriver(struct BESCDriverHandle *handle) {
@@ -227,13 +211,10 @@ uint8_t InitializeBCSDriver(enum TIMChannel pwmTIMCh,
 }
 
 uint8_t BESCDriverChangeSpeed(struct BESCDriverHandle *handle, uint8_t *data) {
-	double newSpeed;
-	memcpy(&newSpeed, data, sizeof(double));
+	int8_t newSpeed;
+	memcpy(&newSpeed, data, sizeof(newSpeed));
 
-	if (newSpeed > 1.0 || newSpeed < -1.0)
-		return ANY_ERROR;
-
-	double newDutyCycle = STOPPED_DC + MAX_VAR_DC * newSpeed;
+	double newDutyCycle = STOPPED_DC + MAX_VAR_DC * ((float)newSpeed / 0x7F);
 
 	__HAL_TIM_SET_COMPARE(handle->PWMTIM->Tim, handle->PWMTIM->Channel,
 			round(m_BESCDriverARR * (1 - newDutyCycle)));
@@ -242,27 +223,24 @@ uint8_t BESCDriverChangeSpeed(struct BESCDriverHandle *handle, uint8_t *data) {
 }
 
 uint8_t LEDDriverChangeBrightness(struct LEDDriverHandle *handle, uint8_t *data) {
-	double newBrightness;
-	memcpy(&newBrightness, data, sizeof(double));
-
-	if (newBrightness > 1.0 || newBrightness < 0)
-		return ANY_ERROR;
+	uint8_t newBrightness;
+	memcpy(&newBrightness, data, sizeof(newBrightness));
 
 	__HAL_TIM_SET_COMPARE(handle->PWMTIM->Tim, handle->PWMTIM->Channel,
-			round(m_LEDDriverARR * newBrightness));
+			round(m_LEDDriverARR * ((float)newBrightness / 0xFF)));
 
 	return ALL_OK;
 }
 
 uint8_t BCSDriverChangeSpeed(struct BCSDriverHandle *handle, uint8_t *data) {
-	double newSpeed;
-	memcpy(&newSpeed, data, sizeof(double));
+	uint8_t newSpeed;
+	memcpy(&newSpeed, data, sizeof(newSpeed));
 
 	if (newSpeed > 1.0 || newSpeed < 0)
 		return ANY_ERROR;
 
 	uint32_t newARR = m_BCSDriverMaxARR
-			- round(newSpeed * (m_BCSDriverMaxARR - m_BCSDriverMinARR));
+			- round(((float)newSpeed / 0xFF) * (m_BCSDriverMaxARR - m_BCSDriverMinARR));
 
 	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->Tim, newARR);
 	__HAL_TIM_SET_COMPARE(handle->PWMTIM->Tim, handle->PWMTIM->Channel,
@@ -274,7 +252,7 @@ uint8_t BCSDriverChangeSpeed(struct BCSDriverHandle *handle, uint8_t *data) {
 uint8_t BCSDriverMove(struct BCSDriverHandle *handle, uint8_t *data) {
 	enum Direction direction = (enum Direction) data[0];
 	uint16_t steps;
-	memcpy(&steps, data + 1, sizeof(int16_t));
+	memcpy(&steps, &data[1], sizeof(int16_t));
 	steps = steps * 2 - 1;
 
 	if (!(direction == FORWARD || direction == BACKWARD)) return ANY_ERROR;

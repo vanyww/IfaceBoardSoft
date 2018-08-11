@@ -81,10 +81,6 @@ static void MX_NVIC_Init(void);
 
 /* USER CODE BEGIN PFP */
 
-void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart);
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
-
 /* Private function prototypes -----------------------------------------------*/
 
 /* USER CODE END PFP */
@@ -170,7 +166,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if (htim->Instance == TIM14) {
-		__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
+		//__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
 		return;
 	}
 
@@ -230,15 +226,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	/*
-	 StartChangeFlashParam();
 
-	 HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, (uint32_t)&PParams->F_BaudRate, 1024);
-	 HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, (uint32_t)&PParams->F_SlaveId, 5);
-	 HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, (uint32_t)&PParams->FunctionalUsage, 1);
-
-	 EndChangeFlashParam((uint64_t *)&PParams->F_BaudRate, 12);
-	 */
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -260,7 +248,6 @@ int main(void)
   }
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();
-  /* Remap SRAM at 0x00000000 */
   __HAL_SYSCFG_REMAPMEMORY_SRAM();
 
   /* USER CODE END SysInit */
@@ -276,12 +263,13 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM14_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_TIM16_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+  LoadUARTBaud();
   InitializeCommands();
   SetDeviceConfiguration();
 
@@ -297,7 +285,6 @@ int main(void)
   __HAL_TIM_CLEAR_FLAG(&htim14, TIM_FLAG_UPDATE);
   __HAL_TIM_ENABLE_IT(&htim14, TIM_IT_UPDATE);
   __HAL_TIM_ENABLE(&htim14);
-
 
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
@@ -392,13 +379,13 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
   /* TIM14_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM14_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(TIM14_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(TIM14_IRQn);
   /* USART1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(USART1_IRQn, 3, 0);
+  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(USART1_IRQn);
   /* USART2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(USART2_IRQn, 3, 0);
+  HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* DMA1_Channel4_5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_5_IRQn, 1, 0);
