@@ -13,6 +13,7 @@
 #include "stm32f0xx.h"
 #include "peripheral_drivers.h"
 #include "stm32f0xx_hal_flash_ex.h"
+#include "MS5837-30BADriver.h"
 
 #define USER_DATA_PAGE 0x800FC00
 
@@ -34,6 +35,8 @@ struct ParamsStruct {
 	const uint32_t F_USART1BaudRate;
 	const uint32_t F_USART2BaudRate;
 	const struct DevicesStruct F_Devices;
+	const uint16_t F_MS5837_D1OSR;
+	const uint16_t F_MS5837_D2OSR;
 };
 
 volatile extern const union _ParamsUnion{

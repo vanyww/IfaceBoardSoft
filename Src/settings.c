@@ -10,7 +10,7 @@
 
 #define MAX16BIT 0xFFFF
 
-__IO const union _ParamsUnion ParamsUnion;
+volatile const union _ParamsUnion ParamsUnion;
 
 uint16_t m_paramsBuffer[sizeof(struct ParamsStruct) / sizeof(uint16_t) + 1];
 

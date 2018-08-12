@@ -24,7 +24,10 @@ uint8_t BCSDriversCounter = 0;
 struct LEDDriverHandle LEDDrivers[LED_DRIVERS_MAX];
 uint8_t LEDDriversCounter = 0;
 
-static uint8_t ResultBuffer[RESULT_BUFFER_LENGTH] = {0};
+static uint8_t ResultBuffer[RESULT_BUFFER_LENGTH] = { 0 };
+
+static enum MS5837D1OSRCommand MS5837D1OSR;
+static enum MS5837D2OSRCommand MS5837D2OSR;
 
 void SaveDeviceConfig(void) {
 	StartChangeFlashParam();
@@ -33,7 +36,8 @@ void SaveDeviceConfig(void) {
 			(uint32_t) &ParamsUnion.Params.F_Devices.IsUsed, (uint16_t) 0x1);
 
 	for (uint8_t i = 0;
-			i < BESC_DRIVERS_MAX * sizeof(struct BESCDriverHandle) / 2
+			i
+					< BESC_DRIVERS_MAX * sizeof(struct BESCDriverHandle) / 2
 							+ BESC_DRIVERS_MAX * sizeof(struct BESCDriverHandle)
 									% 2; i++)
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
@@ -45,7 +49,8 @@ void SaveDeviceConfig(void) {
 			(uint16_t) BESCDriversCounter);
 
 	for (uint8_t i = 0;
-			i < BCS_DRIVERS_MAX * sizeof(struct BCSDriverHandle) / 2
+			i
+					< BCS_DRIVERS_MAX * sizeof(struct BCSDriverHandle) / 2
 							+ BCS_DRIVERS_MAX * sizeof(struct BCSDriverHandle)
 									% 2; i++)
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
@@ -57,7 +62,8 @@ void SaveDeviceConfig(void) {
 			(uint16_t) BCSDriversCounter);
 
 	for (uint8_t i = 0;
-			i < LED_DRIVERS_MAX * sizeof(struct LEDDriverHandle) / 2
+			i
+					< LED_DRIVERS_MAX * sizeof(struct LEDDriverHandle) / 2
 							+ LED_DRIVERS_MAX * sizeof(struct LEDDriverHandle)
 									% 2; i++)
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
@@ -103,13 +109,13 @@ void ResetDeviceConfig(void) {
 void SetDeviceConfiguration(void) {
 	LoadDeviceConfig();
 
-	for(uint8_t i = 0; i < BESCDriversCounter; i++)
+	for (uint8_t i = 0; i < BESCDriversCounter; i++)
 		ReinitializeBESCDriver(&BESCDrivers[i]);
 
-	for(uint8_t i = 0; i < BCSDriversCounter; i++)
+	for (uint8_t i = 0; i < BCSDriversCounter; i++)
 		ReinitializeBCSDriver(&BCSDrivers[i]);
 
-	for(uint8_t i = 0; i < LEDDriversCounter; i++)
+	for (uint8_t i = 0; i < LEDDriversCounter; i++)
 		ReinitializeLEDDriver(&LEDDrivers[i]);
 }
 
@@ -117,16 +123,25 @@ void LoadUARTBaud(void) {
 	uint32_t flashUARTBaud;
 
 	flashUARTBaud = ParamsUnion.Params.F_USART1BaudRate;
-	if(flashUARTBaud != 0) {
+	if (flashUARTBaud != 0) {
 		huart1.Init.BaudRate = flashUARTBaud;
 		HAL_UART_Init(&huart1);
 	}
 
 	flashUARTBaud = ParamsUnion.Params.F_USART2BaudRate;
-	if(flashUARTBaud != 0) {
+	if (flashUARTBaud != 0) {
 		huart2.Init.BaudRate = flashUARTBaud;
 		HAL_UART_Init(&huart2);
 	}
+}
+
+void LoadMS5837OSR(void) {
+	MS5837D1OSR =
+			(ParamsUnion.Params.F_MS5837_D1OSR == 0) ?
+					DEFAULT_MS5837D1OSR : ParamsUnion.Params.F_MS5837_D1OSR;
+	MS5837D2OSR =
+			(ParamsUnion.Params.F_MS5837_D2OSR == 0) ?
+					DEFAULT_MS5837D2OSR : ParamsUnion.Params.F_MS5837_D2OSR;
 }
 
 //
@@ -139,7 +154,8 @@ uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
 //
 
 //
-uint8_t C_W_ChangeBaudRate(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_ChangeBaudRate(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(uint8_t) + sizeof(uint32_t)))
 		return ANY_ERROR;
 
@@ -150,7 +166,7 @@ uint8_t C_W_ChangeBaudRate(struct ModbusRecvMessage *msg, uint16_t *writtenDataL
 
 	StartChangeFlashParam();
 
-	switch(usartId) {
+	switch (usartId) {
 	case 1:
 		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
 				(uint32_t) &ParamsUnion.Params.F_USART1BaudRate, newBaudRate);
@@ -167,8 +183,7 @@ uint8_t C_W_ChangeBaudRate(struct ModbusRecvMessage *msg, uint16_t *writtenDataL
 		EndChangeFlashParam((void *) &ParamsUnion.Params.F_USART2BaudRate,
 				sizeof(ParamsUnion.Params.F_USART2BaudRate));
 
-
-		huart2.Init.BaudRate =  newBaudRate;
+		huart2.Init.BaudRate = newBaudRate;
 		HAL_UART_Init(&huart2);
 		break;
 	}
@@ -193,7 +208,8 @@ uint8_t C_W_Reset(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
 //
 
 //
-uint8_t C_W_ChangeSlaveId(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_ChangeSlaveId(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(uint8_t)))
 		return ANY_ERROR;
 
@@ -218,7 +234,8 @@ uint8_t C_W_ChangeSlaveId(struct ModbusRecvMessage *msg, uint16_t *writtenDataLe
 //
 
 //
-uint8_t C_W_SaveDeviceConfiguration(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_SaveDeviceConfiguration(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != 0)
 		return ANY_ERROR;
 
@@ -231,7 +248,8 @@ uint8_t C_W_SaveDeviceConfiguration(struct ModbusRecvMessage *msg, uint16_t *wri
 //
 
 //
-uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != 0)
 		return ANY_ERROR;
 
@@ -244,14 +262,14 @@ uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg, uint16_t *wr
 //
 
 //
-uint8_t C_W_InitializeBESCDevice(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_InitializeBESCDevice(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(enum TIMChannel)))
 		return ANY_ERROR;
 
-	if (InitializeBESCDriver((enum TIMChannel)msg->Data[0],
+	if (InitializeBESCDriver((enum TIMChannel) msg->Data[0],
 			&BESCDrivers[BESCDriversCounter]))
 		return ANY_ERROR;
-
 
 	ResultBuffer[0] = BESCDriversCounter++;
 
@@ -262,7 +280,8 @@ uint8_t C_W_InitializeBESCDevice(struct ModbusRecvMessage *msg, uint16_t *writte
 //
 
 //
-uint8_t C_W_InitializeLEDDevice(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_InitializeLEDDevice(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(enum TIMChannel)))
 		return ANY_ERROR;
 
@@ -279,7 +298,8 @@ uint8_t C_W_InitializeLEDDevice(struct ModbusRecvMessage *msg, uint16_t *written
 //
 
 //
-uint8_t C_W_InitializeBCSDevice(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_InitializeBCSDevice(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength
 			!= ADD_2_2(sizeof(enum TIMChannel) + 3 * sizeof(enum GPIOChannel)))
 		return ANY_ERROR;
@@ -304,14 +324,16 @@ uint8_t C_W_InitializeBCSDevice(struct ModbusRecvMessage *msg, uint16_t *written
 
 	ResultBuffer[0] = BCSDriversCounter++;
 
-	*writtenDataLength = ADD_2_2(sizeof(enum TIMChannel) + 3 * sizeof(enum GPIOChannel));
+	*writtenDataLength = ADD_2_2(
+			sizeof(enum TIMChannel) + 3 * sizeof(enum GPIOChannel));
 
 	return ALL_OK;
 }
 //
 
 //
-uint8_t C_W_BESCChangeSpeed(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_BESCChangeSpeed(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t)))
 		return ANY_ERROR;
 
@@ -331,7 +353,8 @@ uint8_t C_W_BESCChangeSpeed(struct ModbusRecvMessage *msg, uint16_t *writtenData
 //
 
 //
-uint8_t C_W_LEDChangeBrightness(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_LEDChangeBrightness(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t)))
 		return ANY_ERROR;
 
@@ -351,7 +374,8 @@ uint8_t C_W_LEDChangeBrightness(struct ModbusRecvMessage *msg, uint16_t *written
 //
 
 //
-uint8_t C_W_BCS_ChangeSpeed(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_BCS_ChangeSpeed(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t)))
 		return ANY_ERROR;
 
@@ -380,7 +404,8 @@ uint8_t C_W_BCS_Move(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength)
 	if (bcsDriverId >= BCSDriversCounter)
 		return ANY_ERROR;
 
-	if (BCSDriverMove(&BCSDrivers[bcsDriverId], &msg->Data[sizeof(bcsDriverId)]))
+	if (BCSDriverMove(&BCSDrivers[bcsDriverId],
+			&msg->Data[sizeof(bcsDriverId)]))
 		return ANY_ERROR;
 
 	*writtenDataLength = ADD_2_2(2 * sizeof(uint8_t) + sizeof(uint16_t));
@@ -409,7 +434,8 @@ uint8_t C_W_BCS_Stop(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength)
 //
 
 //
-uint8_t C_W_BCS_MoveToEnd(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_BCS_MoveToEnd(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(2 * sizeof(uint8_t)))
 		return ANY_ERROR;
 
@@ -429,72 +455,98 @@ uint8_t C_W_BCS_MoveToEnd(struct ModbusRecvMessage *msg, uint16_t *writtenDataLe
 //
 
 //
-uint8_t C_R_MS5837_CheckConnection(struct ModbusRecvMessage *msg, uint8_t *result,
-		uint8_t *resultLength) {
-	enum MS5837ErrorCode status = MS5837IsConnected();
+uint8_t C_W_MS5837_ChangeD1OSR(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
+	if (msg->DataLength != ADD_2_2(sizeof(enum MS5837D1OSRCommand)))
+		return ANY_ERROR;
 
-	result[0] = 0;
-	result[1] = status;
+	enum MS5837D1OSRCommand d1osr = msg->Data[0];
 
-	*resultLength = sizeof(uint16_t);
+	StartChangeFlashParam();
+
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_MS5837_D1OSR, (uint16_t) d1osr);
+
+	EndChangeFlashParam((void *) &ParamsUnion.Params.F_MS5837_D1OSR,
+			sizeof(ParamsUnion.Params.F_MS5837_D1OSR));
+
+	MS5837D1OSR = d1osr;
+	*writtenDataLength = ADD_2_2(sizeof(enum MS5837D1OSRCommand));
 
 	return ALL_OK;
 }
 
-uint8_t C_W_MS5837_ReadTemp(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
+uint8_t C_W_MS5837_ChangeD2OSR(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(enum MS5837D2OSRCommand)))
 		return ANY_ERROR;
 
 	enum MS5837D2OSRCommand d2osr = msg->Data[0];
-	float temp;
 
-	if (MS5837ReadTemperature(d2osr, &temp))
-		return ANY_ERROR;
+	StartChangeFlashParam();
 
-	memcpy(ResultBuffer, &temp, sizeof(temp));
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,
+			(uint32_t) &ParamsUnion.Params.F_MS5837_D2OSR, (uint16_t) d2osr);
 
+	EndChangeFlashParam((void *) &ParamsUnion.Params.F_MS5837_D2OSR,
+			sizeof(ParamsUnion.Params.F_MS5837_D2OSR));
+
+	MS5837D2OSR = d2osr;
 	*writtenDataLength = ADD_2_2(sizeof(enum MS5837D2OSRCommand));
 
 	return ALL_OK;
 }
 
-uint8_t C_W_MS5837_ReadTempAndPress(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
-	if (msg->DataLength
-			!= ADD_2_2(sizeof(enum MS5837D2OSRCommand)
-					+ sizeof(enum MS5837D1OSRCommand)))
-		return ANY_ERROR;
+uint8_t C_R_MS5837_CheckConnection(struct ModbusRecvMessage *msg,
+		uint8_t *result, uint8_t *resultLength) {
+	enum MS5837ErrorCode status = MS5837IsConnected();
 
-	enum MS5837D1OSRCommand d1osr = msg->Data[0], d2osr = msg->Data[1];
-	float temp, press;
+	result[0] = 0;
+	result[1] = status;
 
-	if (MS5837ReadTemperatureAndPressure(d1osr, d2osr, &temp, &press))
-		return ANY_ERROR;
-
-	memcpy(ResultBuffer, &temp, sizeof(float));
-	memcpy(ResultBuffer + sizeof(float), &press, sizeof(float));
-
-	*writtenDataLength = ADD_2_2(sizeof(enum MS5837D2OSRCommand)
-				+ sizeof(enum MS5837D1OSRCommand));
+	*resultLength = ADD_2_2(sizeof(uint16_t));
 
 	return ALL_OK;
 }
 
-uint8_t C_W_MS5837_ReadPress(struct ModbusRecvMessage *msg, uint16_t *writtenDataLength) {
-	if (msg->DataLength
-			!= ADD_2_2(sizeof(enum MS5837D2OSRCommand)
-					+ sizeof(enum MS5837D1OSRCommand)))
+uint8_t C_R_MS5837_ReadTemp(struct ModbusRecvMessage *msg,
+		uint8_t *result, uint8_t *resultLength) {
+	float temp;
+
+	if (MS5837ReadTemperature(MS5837D2OSR, &temp))
 		return ANY_ERROR;
 
-	enum MS5837D1OSRCommand d1osr = msg->Data[0], d2osr = msg->Data[1];
+	memcpy(result, &temp, sizeof(temp));
+	*resultLength = ADD_2_2(sizeof(temp));
+
+	return ALL_OK;
+}
+
+uint8_t C_R_MS5837_ReadTempAndPress(struct ModbusRecvMessage *msg,
+		uint8_t *result, uint8_t *resultLength) {
+	float temp, press;
+
+	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp, &press))
+		return ANY_ERROR;
+
+	memcpy(result, &temp, sizeof(temp));
+	memcpy(result + sizeof(temp), &press, sizeof(press));
+
+	*resultLength = ADD_2_2(sizeof(temp) + sizeof(press));
+
+	return ALL_OK;
+}
+
+uint8_t C_R_MS5837_ReadPress(struct ModbusRecvMessage *msg,
+		uint8_t *result, uint8_t *resultLength) {
 	float press, temp;
 
-	if (MS5837ReadTemperatureAndPressure(d1osr, d2osr, &temp, &press))
+	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp, &press))
 		return ANY_ERROR;
 
-	memcpy(ResultBuffer, &press, sizeof(float));
+	memcpy(result, &press, sizeof(press));
 
-	*writtenDataLength = ADD_2_2(sizeof(enum MS5837D2OSRCommand)
-			+ sizeof(enum MS5837D1OSRCommand));
+	*resultLength = ADD_2_2(sizeof(press));
 
 	return ALL_OK;
 }
@@ -503,7 +555,7 @@ uint8_t C_W_MS5837_ReadPress(struct ModbusRecvMessage *msg, uint16_t *writtenDat
 //
 uint8_t C_R_ReadResultBuffer(struct ModbusRecvMessage *msg, uint8_t *result,
 		uint8_t *resultLength) {
-	if(msg->RegistersCount > RESULT_BUFFER_LENGTH)
+	if (msg->RegistersCount > RESULT_BUFFER_LENGTH)
 		return ANY_ERROR;
 
 	uint8_t readSize = msg->RegistersCount * sizeof(uint16_t);
@@ -516,7 +568,7 @@ uint8_t C_R_ReadResultBuffer(struct ModbusRecvMessage *msg, uint8_t *result,
 
 void InitializeCommands() {
 	InitializeModbus();
-    InitializeDriversWorker();
+	InitializeDriversWorker();
 	MS5837Init();
 	InitializeFlash();
 
@@ -546,7 +598,9 @@ void InitializeCommands() {
 
 	//MS5837
 	AddCommand(0x40, &C_R_MS5837_CheckConnection, NULL);
-	AddCommand(0x41, NULL, &C_W_MS5837_ReadTemp);
-	AddCommand(0x42, NULL, &C_W_MS5837_ReadTempAndPress);
-	AddCommand(0x43, NULL, &C_W_MS5837_ReadPress);
+	AddCommand(0x41, &C_R_MS5837_ReadTemp, NULL);
+	AddCommand(0x42, &C_R_MS5837_ReadTempAndPress, NULL);
+	AddCommand(0x43, &C_R_MS5837_ReadPress, NULL);
+	AddCommand(0x44, NULL, &C_W_MS5837_ChangeD1OSR);
+	AddCommand(0x45, NULL, &C_W_MS5837_ChangeD2OSR);
 }

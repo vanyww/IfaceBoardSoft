@@ -10,6 +10,9 @@
 
 #include "defs.h"
 
+#define DEFAULT_MS5837D1OSR 0x40
+#define DEFAULT_MS5837D2OSR 0x50
+
 enum MS5837D1OSRCommand {
 	MS5837_D1_OSR_256 = 0x40,
 	MS5837_D1_OSR_512 = 0x42,

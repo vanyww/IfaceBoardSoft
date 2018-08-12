@@ -14,6 +14,7 @@
 void LoadUARTBaud(void);
 void InitializeCommands(void);
 void SetDeviceConfiguration(void);
+void LoadMS5837OSR(void);
 
 extern struct BESCDriverHandle BESCDrivers[4];
 extern uint8_t BESCDriversCounter;
