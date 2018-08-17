@@ -24,6 +24,9 @@ uint8_t BCSDriversCounter = 0;
 struct LEDDriverHandle LEDDrivers[LED_DRIVERS_MAX];
 uint8_t LEDDriversCounter = 0;
 
+struct SLEDDriverHandle SLEDDrivers[SLED_DRIVERS_MAX];
+uint8_t SLEDDriversCounter = 0;
+
 static uint8_t ResultBuffer[RESULT_BUFFER_LENGTH] = { 0 };
 
 static enum MS5837D1OSRCommand MS5837D1OSR;
@@ -85,6 +88,7 @@ uint8_t LoadDeviceConfig(void) {
 	BESCDriversCounter = ParamsUnion.Params.F_Devices.BESCDriversCounter;
 	BCSDriversCounter = ParamsUnion.Params.F_Devices.BCSDriversCounter;
 	LEDDriversCounter = ParamsUnion.Params.F_Devices.LEDDriversCounter;
+	SLEDDriversCounter = ParamsUnion.Params.F_Devices.SLEDDriversCounter;
 
 	volmemcpy(BESCDrivers, ParamsUnion.Params.F_Devices.BESCDrivers,
 			sizeof(struct BESCDriverHandle) * BESC_DRIVERS_MAX);
@@ -92,6 +96,8 @@ uint8_t LoadDeviceConfig(void) {
 			sizeof(struct BCSDriverHandle) * BCS_DRIVERS_MAX);
 	volmemcpy(LEDDrivers, ParamsUnion.Params.F_Devices.LEDDrivers,
 			sizeof(struct LEDDriverHandle) * LED_DRIVERS_MAX);
+	volmemcpy(SLEDDrivers, ParamsUnion.Params.F_Devices.SLEDDrivers,
+			sizeof(struct SLEDDriverHandle) * SLED_DRIVERS_MAX);
 
 	return ALL_OK;
 }
@@ -107,7 +113,7 @@ void ResetDeviceConfig(void) {
 }
 
 void SetDeviceConfiguration(void) {
-	LoadDeviceConfig();
+	if (LoadDeviceConfig()) return;
 
 	for (uint8_t i = 0; i < BESCDriversCounter; i++)
 		ReinitializeBESCDriver(&BESCDrivers[i]);
@@ -117,6 +123,18 @@ void SetDeviceConfiguration(void) {
 
 	for (uint8_t i = 0; i < LEDDriversCounter; i++)
 		ReinitializeLEDDriver(&LEDDrivers[i]);
+}
+
+uint8_t ResetCurrentConfig(void) {
+	if(BCSDriversCounter > 0)
+		if (DeinitializeBSCDriver(&BCSDrivers[0])) return ANY_ERROR;
+
+	LEDDriversCounter = 0;
+	BCSDriversCounter = 0;
+	BESCDriversCounter = 0;
+	SLEDDriversCounter = 0;
+
+	return ALL_OK;
 }
 
 void LoadUARTBaud(void) {
@@ -136,19 +154,26 @@ void LoadUARTBaud(void) {
 }
 
 void LoadMS5837OSR(void) {
-	MS5837D1OSR =
-			(ParamsUnion.Params.F_MS5837_D1OSR == 0) ?
-					DEFAULT_MS5837D1OSR : ParamsUnion.Params.F_MS5837_D1OSR;
-	MS5837D2OSR =
-			(ParamsUnion.Params.F_MS5837_D2OSR == 0) ?
-					DEFAULT_MS5837D2OSR : ParamsUnion.Params.F_MS5837_D2OSR;
+	uint8_t MS5837OSR;
+
+	MS5837OSR = ParamsUnion.Params.F_MS5837_D1OSR;
+
+	MS5837D1OSR = (MS5837OSR == 0) ?
+	DEFAULT_MS5837D1OSR :
+	MS5837OSR;
+
+	MS5837OSR = ParamsUnion.Params.F_MS5837_D2OSR;
+
+	MS5837D2OSR = (MS5837OSR == 0) ?
+	DEFAULT_MS5837D2OSR :
+	MS5837OSR;
 }
 
 //
 uint8_t C_R_Ping(struct ModbusRecvMessage *msg, uint8_t *result,
 		uint8_t *resultLength) {
-
 	*resultLength = 0;
+
 	return ALL_OK;
 }
 //
@@ -262,6 +287,16 @@ uint8_t C_W_ResetDeviceConfiguration(struct ModbusRecvMessage *msg,
 //
 
 //
+uint8_t C_W_ResetCurrentDeviceConfiguration(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
+	if (msg->DataLength != 0)
+		return ANY_ERROR;
+	*writtenDataLength = 0;
+	return ResetCurrentConfig();
+}
+//
+
+//
 uint8_t C_W_InitializeBESCDevice(struct ModbusRecvMessage *msg,
 		uint16_t *writtenDataLength) {
 	if (msg->DataLength != ADD_2_2(sizeof(enum TIMChannel)))
@@ -290,6 +325,24 @@ uint8_t C_W_InitializeLEDDevice(struct ModbusRecvMessage *msg,
 		return ANY_ERROR;
 
 	ResultBuffer[0] = LEDDriversCounter++;
+
+	*writtenDataLength = ADD_2_2(sizeof(enum TIMChannel));
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_InitializeSLEDDevice(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
+	if (msg->DataLength != ADD_2_2(sizeof(enum TIMChannel)))
+		return ANY_ERROR;
+
+	if (InitializeSLEDDriver((enum TIMChannel) msg->Data[0],
+			&SLEDDrivers[SLEDDriversCounter]))
+		return ANY_ERROR;
+
+	ResultBuffer[0] = SLEDDriversCounter++;
 
 	*writtenDataLength = ADD_2_2(sizeof(enum TIMChannel));
 
@@ -365,6 +418,27 @@ uint8_t C_W_LEDChangeBrightness(struct ModbusRecvMessage *msg,
 
 	if (LEDDriverChangeBrightness(&LEDDrivers[ledDriverId],
 			&msg->Data[sizeof(ledDriverId)]))
+		return ANY_ERROR;
+
+	*writtenDataLength = ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t));
+
+	return ALL_OK;
+}
+//
+
+//
+uint8_t C_W_SLEDChangeBrightness(struct ModbusRecvMessage *msg,
+		uint16_t *writtenDataLength) {
+	if (msg->DataLength != ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t)))
+		return ANY_ERROR;
+
+	uint8_t sledDriverId = msg->Data[0];
+
+	if (sledDriverId >= SLEDDriversCounter)
+		return ANY_ERROR;
+
+	if (SLEDDriverChangeBrightness(&SLEDDrivers[sledDriverId],
+			&msg->Data[sizeof(sledDriverId)]))
 		return ANY_ERROR;
 
 	*writtenDataLength = ADD_2_2(sizeof(uint8_t) + sizeof(uint8_t));
@@ -509,8 +583,8 @@ uint8_t C_R_MS5837_CheckConnection(struct ModbusRecvMessage *msg,
 	return ALL_OK;
 }
 
-uint8_t C_R_MS5837_ReadTemp(struct ModbusRecvMessage *msg,
-		uint8_t *result, uint8_t *resultLength) {
+uint8_t C_R_MS5837_ReadTemp(struct ModbusRecvMessage *msg, uint8_t *result,
+		uint8_t *resultLength) {
 	float temp;
 
 	if (MS5837ReadTemperature(MS5837D2OSR, &temp))
@@ -526,7 +600,8 @@ uint8_t C_R_MS5837_ReadTempAndPress(struct ModbusRecvMessage *msg,
 		uint8_t *result, uint8_t *resultLength) {
 	float temp, press;
 
-	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp, &press))
+	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp,
+			&press))
 		return ANY_ERROR;
 
 	memcpy(result, &temp, sizeof(temp));
@@ -537,11 +612,12 @@ uint8_t C_R_MS5837_ReadTempAndPress(struct ModbusRecvMessage *msg,
 	return ALL_OK;
 }
 
-uint8_t C_R_MS5837_ReadPress(struct ModbusRecvMessage *msg,
-		uint8_t *result, uint8_t *resultLength) {
+uint8_t C_R_MS5837_ReadPress(struct ModbusRecvMessage *msg, uint8_t *result,
+		uint8_t *resultLength) {
 	float press, temp;
 
-	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp, &press))
+	if (MS5837ReadTemperatureAndPressure(MS5837D1OSR, MS5837D2OSR, &temp,
+			&press))
 		return ANY_ERROR;
 
 	memcpy(result, &press, sizeof(press));
@@ -580,6 +656,7 @@ void InitializeCommands() {
 	AddCommand(0x04, NULL, &C_W_Reset);
 	AddCommand(0x05, NULL, &C_W_ChangeBaudRate);
 	AddCommand(0x06, &C_R_ReadResultBuffer, NULL);
+	AddCommand(0x07, NULL, &C_W_ResetCurrentDeviceConfiguration);
 
 	//BESC
 	AddCommand(0x10, NULL, &C_W_InitializeBESCDevice);
@@ -603,4 +680,8 @@ void InitializeCommands() {
 	AddCommand(0x43, &C_R_MS5837_ReadPress, NULL);
 	AddCommand(0x44, NULL, &C_W_MS5837_ChangeD1OSR);
 	AddCommand(0x45, NULL, &C_W_MS5837_ChangeD2OSR);
+
+	//LED
+	AddCommand(0x50, NULL, &C_W_InitializeSLEDDevice);
+	AddCommand(0x51, NULL, &C_W_SLEDChangeBrightness);
 }

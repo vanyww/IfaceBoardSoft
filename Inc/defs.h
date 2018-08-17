@@ -17,6 +17,6 @@ enum ErrorCode {
 	ANY_ERROR = 0xFF,
 };
 
-void volmemcpy (void *dest, volatile const void *src, uint16_t len);
+void volmemcpy(void *dest, volatile const void *src, uint16_t len);
 
 #endif /* DEFS_H_ */

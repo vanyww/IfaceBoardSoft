@@ -166,7 +166,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if (htim->Instance == TIM14) {
-		//__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
+		__HAL_IWDG_RELOAD_COUNTER(&hiwdg);
 		return;
 	}
 
@@ -263,7 +263,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM14_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_TIM16_Init();
 
   /* Initialize interrupts */

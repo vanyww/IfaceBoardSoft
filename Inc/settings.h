@@ -28,6 +28,9 @@ struct DevicesStruct {
 
 	struct LEDDriverHandle LEDDrivers[LED_DRIVERS_MAX];
 	uint16_t LEDDriversCounter;
+
+	struct SLEDDriverHandle SLEDDrivers[SLED_DRIVERS_MAX];
+	uint16_t SLEDDriversCounter;
 };
 
 struct ParamsStruct {
