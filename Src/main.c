@@ -244,7 +244,7 @@ int main(void)
   /* USER CODE BEGIN SysInit */
   for(uint8_t i = 0; i < 48; i++)
   {
-    VectorTable[i] = *(__IO uint32_t*)(0x8003000 + (i<<2));
+    VectorTable[i] = *(__IO uint32_t *)(0x8003000 + (i << 2));
   }
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();

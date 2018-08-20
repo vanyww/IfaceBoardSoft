@@ -238,7 +238,7 @@ uint8_t InitializeBCSDriver(enum TIMChannel pwmTIMCh,
 	sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
 	sSlaveConfig.InputTrigger = TIM_TS_ITR0;
 	if (HAL_TIM_SlaveConfigSynchronization(timCh->Tim, &sSlaveConfig) != HAL_OK)
-		return ANY_ERROR;\
+		return ANY_ERROR;
 
 	for (uint8_t i = 0; i < TIMChannelHandlesNumber; i++)
 		if (timCh->Tim == m_TIMChannels[i].Tim)
@@ -292,8 +292,9 @@ uint8_t BCSDriverChangeSpeed(struct BCSDriverHandle *handle, uint8_t *data) {
 	uint8_t newSpeed = data[0];
 
 	uint32_t newARR = m_BCSDriverMaxARR
-			- round(((float)newSpeed / 0xFF) * (m_BCSDriverMaxARR - m_BCSDriverMinARR));
+			- round(((float)newSpeed / UINT8_MAX) * (m_BCSDriverMaxARR - m_BCSDriverMinARR));
 
+	__HAL_TIM_SET_COUNTER(handle->PWMTIM->Tim, 0);
 	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->Tim, newARR);
 	__HAL_TIM_SET_COMPARE(handle->PWMTIM->Tim, handle->PWMTIM->Channel,
 			newARR / 2);
@@ -374,7 +375,7 @@ uint8_t BCSDriverMoveToEnd(struct BCSDriverHandle *handle, uint8_t *data) {
 	HAL_GPIO_WritePin(handle->DirectionGPIO->GPIO, handle->DirectionGPIO->Pin,
 			(direction) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
-	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, 0xFFFF);
+	__HAL_TIM_SET_AUTORELOAD(handle->PWMTIM->ComplementTIM, UINT16_MAX);
 
 	HAL_GPIO_WritePin(handle->DisableGPIO->GPIO, handle->DisableGPIO->Pin,
 			GPIO_PIN_SET);

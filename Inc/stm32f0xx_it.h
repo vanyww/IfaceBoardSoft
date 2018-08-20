@@ -51,6 +51,7 @@ void SysTick_Handler(void);
 void DMA1_Channel2_3_IRQHandler(void);
 void DMA1_Channel4_5_IRQHandler(void);
 void TIM1_BRK_UP_TRG_COM_IRQHandler(void);
+void TIM2_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 void TIM14_IRQHandler(void);
 void TIM16_IRQHandler(void);
